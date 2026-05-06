@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gene Mutation Possibility Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Biopython FASTA analyzer</p>
+          <h1>Gene Mutation Possibility Analyzer</h1>
+          <p class="lede">Paste or upload a DNA FASTA sequence to find possible point mutations, their positions, and predicted coding effects.</p>
+        </div>
+        <div class="metrics">
+          <span>SNV scan</span>
+          <strong>A/C/G/T</strong>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form method="post" enctype="multipart/form-data" class="input-panel">
+          <label for="fasta_text">FASTA sequence</label>
+          <textarea id="fasta_text" name="fasta_text" spellcheck="false">{{ fasta_text }}</textarea>
+          <div class="controls">
+            <label class="file-button">
+              <input type="file" name="fasta_file" accept=".fa,.fasta,.fna,.txt">
+              Upload FASTA
+            </label>
+            <button type="submit">Analyze mutations</button>
+          </div>
+        </form>
+
+        <aside class="note-panel">
+          <h2>What it reports</h2>
+          <p>Each base is tested against the three possible single-nucleotide alternatives. Results are ranked with a practical heuristic using transitions, GC/CpG context, local entropy, and homopolymer runs.</p>
+          <p class="small">This is an educational predictor, not a clinical diagnostic tool.</p>
+        </aside>
+      </section>
+
+      {% if error %}
+        <section class="alert">{{ error }}</section>
+      {% endif %}
+
+      {% if result %}
+        {% for record in result %}
+          <section class="results">
+            <div class="result-head">
+              <div>
+                <p class="eyebrow">Record {{ loop.index }}</p>
+                <h2>{{ record.id }}</h2>
+                <p>{{ record.description }}</p>
+              </div>
+              <div class="stat-grid">
+                <div><span>Length</span><strong>{{ record.length }}</strong></div>
+                <div><span>GC</span><strong>{{ record.gc }}%</strong></div>
+                <div><span>SNVs</span><strong>{{ record.mutation_count }}</strong></div>
+              </div>
+            </div>
+
+            <div class="sequence-strip" aria-label="DNA sequence preview">
+              {{ record.sequence }}
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Point mutation</th>
+                    <th>Position</th>
+                    <th>Possibility</th>
+                    <th>Codon</th>
+                    <th>Protein effect</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for mutation in record.top_mutations %}
+                    <tr>
+                      <td>{{ loop.index }}</td>
+                      <td><strong>{{ mutation.change }}</strong></td>
+                      <td>{{ mutation.position }}</td>
+                      <td>
+                        <span class="badge {{ mutation.label|lower }}">{{ mutation.label }}</span>
+                        {{ mutation.probability }}%
+                      </td>
+                      <td>{{ mutation.codon }} -> {{ mutation.mutated_codon }}</td>
+                      <td>{{ mutation.amino_acid }} -> {{ mutation.mutated_amino_acid }} ({{ mutation.effect }})</td>
+                      <td>{{ mutation.context }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        {% endfor %}
+      {% endif %}
+    </main>
+  </body>
+</html>

@@ -58,12 +58,3 @@ h1 {
   padding: 24px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.06);
 }
-
-textarea {
-  width: 100%;
-  min-height: 280px;
-  border-radius: 14px;
-  border: 1px solid #d0d5dd;
-  padding: 18px;
-  font-family: monospace;
-}

@@ -1,3 +1,8 @@
+from Bio import SeqIO, pairwise2
+from io import StringIO
+
+app = Flask(__name__)
+
 from flask import Flask, render_template, request
                     alignment_visual.append("|")
                 else:

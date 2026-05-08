@@ -1,230 +1,143 @@
-<!doctype html>
-<html lang="en">
+from flask import Flask, render_template, request
+from Bio import SeqIO, pairwise2
+from io import StringIO
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+app = Flask(__name__)
 
-  <title>Gene Mutation Detection Platform</title>
 
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='styles.css') }}">
-</head>
+def parse_fasta(fasta_text):
+    fasta_io = StringIO(fasta_text)
+    records = list(SeqIO.parse(fasta_io, "fasta"))
+    return records
 
-<body>
 
-<main class="shell">
+def calculate_gc(sequence):
+    g = sequence.count("G")
+    c = sequence.count("C")
+    return round(((g + c) / len(sequence)) * 100, 2)
 
-<section class="hero">
 
-<div>
-<p class="eyebrow">Biopython genomic analysis</p>
+def detect_mutations(reference_seq, sample_seq):
 
-<h1>Gene Mutation Detection Platform</h1>
+    alignments = pairwise2.align.globalms(
+        reference_seq,
+        sample_seq,
+        2,
+        -1,
+        -2,
+        -0.5
+    )
+
+    best_alignment = alignments[0]
+
+    aligned_ref = best_alignment.seqA
+    aligned_sample = best_alignment.seqB
+
+    mutations = []
+    alignment_visual = []
+
+    position = 0
+
+    for ref_base, sample_base in zip(aligned_ref, aligned_sample):
 
-<p class="lede">
-Compare reference and sample DNA FASTA sequences
-to detect actual mutations and perform sequence alignment.
-</p>
-</div>
+        # Skip double gaps
+        if ref_base == "-" and sample_base == "-":
+            continue
 
-<div class="metrics">
-<span>Powered By</span>
-<strong>Flask + Biopython</strong>
-</div>
+        # Track actual nucleotide position
+        if ref_base != "-":
+            position += 1
 
-</section>
+        # Ignore insertion/deletion artifacts
+        if ref_base == "-" or sample_base == "-":
+            alignment_visual.append(" ")
+            continue
 
-<section class="workspace">
+        # Match
+        if ref_base == sample_base:
+            alignment_visual.append("|")
 
-<form method="post" class="input-panel">
+        # Real substitution mutation
+        else:
+            alignment_visual.append("*")
 
-<label>Sample FASTA Sequence</label>
+            mutations.append({
+                "position": position,
+                "change": f"{ref_base}→{sample_base}",
+                "probability": 95,
+                "label": "HIGH",
+                "effect": "Substitution",
+                "context": "Actual mismatch detected",
+                "position_percent": round(
+                    (position / len(reference_seq)) * 100,
+                    2
+                )
+            })
 
-<textarea
-name="sample_sequence"
-placeholder="Paste sample FASTA sequence here"
-required
-></textarea>
+    alignment_text = (
+        aligned_ref +
+        "\n" +
+        "".join(alignment_visual) +
+        "\n" +
+        aligned_sample
+    )
 
-<label>Reference FASTA Sequence</label>
+    return mutations, alignment_text
 
-<textarea
-name="reference_sequence"
-placeholder="Paste reference FASTA sequence here"
-required
-></textarea>
 
-<div class="controls">
+@app.route("/", methods=["GET", "POST"])
+def home():
 
-<button type="submit">
-Analyze Mutation
-</button>
+    if request.method == "POST":
 
-</div>
+        try:
+            sample_input = request.form["sample_sequence"]
+            reference_input = request.form["reference_sequence"]
 
-</form>
+            sample_records = parse_fasta(sample_input)
+            reference_records = parse_fasta(reference_input)
 
-<aside class="note-panel">
-
-<h2>Features</h2>
-
-<p>
-• Real mutation detection
-</p>
-
-<p>
-• Sequence alignment
-</p>
-
-<p>
-• GC percentage analysis
-</p>
-
-<p>
-• Mutation mapping
-</p>
-
-<p class="small">
-Educational bioinformatics platform.
-</p>
-
-</aside>
-
-</section>
-
-{% if error %}
-<section class="alert">
-{{ error }}
-</section>
-{% endif %}
-
-{% if result %}
-{% for record in result %}
-
-<section class="results">
-
-<div class="result-head">
-
-<div>
-<p class="eyebrow">Analysis Report</p>
-
-<h2>{{ record.id }}</h2>
-
-<p>{{ record.description }}</p>
-</div>
-
-<div class="stat-grid">
-
-<div>
-<span>Length</span>
-<strong>{{ record.length }}</strong>
-</div>
-
-<div>
-<span>GC%</span>
-<strong>{{ record.gc }}%</strong>
-</div>
-
-<div>
-<span>Mutations</span>
-<strong>{{ record.mutation_count }}</strong>
-</div>
-
-</div>
-
-</div>
-
-<div class="sequence-strip">
-{{ record.sequence }}
-</div>
-
-<section class="alignment-panel">
-
-<h2>Sequence Alignment</h2>
-
-<div class="alignment-box">
-<pre>{{ record.alignment }}</pre>
-</div>
-
-</section>
-
-<section class="graph-panel">
-
-<h2>Mutation Distribution</h2>
-
-<div class="graph-bar">
-
-{% for mutation in record.top_mutations %}
-
-<div
-class="mutation-marker"
-style="left: {{ mutation.position_percent }}%;"
-title="{{ mutation.change }}"
-></div>
-
-{% endfor %}
-
-</div>
-
-</section>
-
-<div class="table-wrap">
-
-<table>
-
-<thead>
-
-<tr>
-<th>Rank</th>
-<th>Mutation</th>
-<th>Position</th>
-<th>Probability</th>
-<th>Effect</th>
-<th>Reason</th>
-</tr>
-
-</thead>
-
-<tbody>
-
-{% for mutation in record.top_mutations %}
-
-<tr>
-
-<td>{{ loop.index }}</td>
-
-<td>{{ mutation.change }}</td>
-
-<td>{{ mutation.position }}</td>
-
-<td>
-<span class="badge high">
-{{ mutation.label }}
-</span>
-{{ mutation.probability }}%
-</td>
-
-<td>{{ mutation.effect }}</td>
-
-<td>{{ mutation.context }}</td>
-
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
-
-</div>
-
-</section>
-
-{% endfor %}
-{% endif %}
-
-</main>
-
-</body>
-</html>
+            if not sample_records or not reference_records:
+                return render_template(
+                    "index.html",
+                    error="Invalid FASTA sequence."
+                )
+
+            sample_record = sample_records[0]
+            reference_record = reference_records[0]
+
+            sample_seq = str(sample_record.seq).upper()
+            reference_seq = str(reference_record.seq).upper()
+
+            mutations, alignment = detect_mutations(
+                reference_seq,
+                sample_seq
+            )
+
+            result = [{
+                "id": sample_record.id,
+                "description": sample_record.description,
+                "sequence": sample_seq,
+                "length": len(sample_seq),
+                "gc": calculate_gc(sample_seq),
+                "mutation_count": len(mutations),
+                "alignment": alignment,
+                "top_mutations": mutations
+            }]
+
+            return render_template(
+                "index.html",
+                result=result
+            )
+
+        except Exception as e:
+            return render_template(
+                "index.html",
+                error=str(e)
+            )
+
+    return render_template("index.html")
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

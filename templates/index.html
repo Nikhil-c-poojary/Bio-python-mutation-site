@@ -1,12 +1,14 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>Gene Mutation & Sequence Alignment Analyzer</title>
+  <title>Gene Mutation Detection Platform</title>
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
 <body>
@@ -16,22 +18,213 @@
 <section class="hero">
 
 <div>
-<p class="eyebrow">Biopython genomic analysis platform</p>
+<p class="eyebrow">Biopython genomic analysis</p>
 
-<h1>Gene Mutation & Sequence Alignment Analyzer</h1>
+<h1>Gene Mutation Detection Platform</h1>
 
 <p class="lede">
-Upload reference and sample FASTA files for DNA mutation analysis.
+Compare reference and sample DNA FASTA sequences
+to detect actual mutations and perform sequence alignment.
 </p>
 </div>
 
 <div class="metrics">
 <span>Powered By</span>
-<strong>Biopython</strong>
+<strong>Flask + Biopython</strong>
 </div>
 
 </section>
 
 <section class="workspace">
 
+<form method="post" class="input-panel">
+
+<label>Sample FASTA Sequence</label>
+
+<textarea
+name="sample_sequence"
+placeholder="Paste sample FASTA sequence here"
+required
+></textarea>
+
+<label>Reference FASTA Sequence</label>
+
+<textarea
+name="reference_sequence"
+placeholder="Paste reference FASTA sequence here"
+required
+></textarea>
+
+<div class="controls">
+
+<button type="submit">
+Analyze Mutation
+</button>
+
+</div>
+
+</form>
+
+<aside class="note-panel">
+
+<h2>Features</h2>
+
+<p>
+• Real mutation detection
+</p>
+
+<p>
+• Sequence alignment
+</p>
+
+<p>
+• GC percentage analysis
+</p>
+
+<p>
+• Mutation mapping
+</p>
+
+<p class="small">
+Educational bioinformatics platform.
+</p>
+
+</aside>
+
+</section>
+
+{% if error %}
+<section class="alert">
+{{ error }}
+</section>
+{% endif %}
+
+{% if result %}
+{% for record in result %}
+
+<section class="results">
+
+<div class="result-head">
+
+<div>
+<p class="eyebrow">Analysis Report</p>
+
+<h2>{{ record.id }}</h2>
+
+<p>{{ record.description }}</p>
+</div>
+
+<div class="stat-grid">
+
+<div>
+<span>Length</span>
+<strong>{{ record.length }}</strong>
+</div>
+
+<div>
+<span>GC%</span>
+<strong>{{ record.gc }}%</strong>
+</div>
+
+<div>
+<span>Mutations</span>
+<strong>{{ record.mutation_count }}</strong>
+</div>
+
+</div>
+
+</div>
+
+<div class="sequence-strip">
+{{ record.sequence }}
+</div>
+
+<section class="alignment-panel">
+
+<h2>Sequence Alignment</h2>
+
+<div class="alignment-box">
+<pre>{{ record.alignment }}</pre>
+</div>
+
+</section>
+
+<section class="graph-panel">
+
+<h2>Mutation Distribution</h2>
+
+<div class="graph-bar">
+
+{% for mutation in record.top_mutations %}
+
+<div
+class="mutation-marker"
+style="left: {{ mutation.position_percent }}%;"
+title="{{ mutation.change }}"
+></div>
+
+{% endfor %}
+
+</div>
+
+</section>
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+
+<tr>
+<th>Rank</th>
+<th>Mutation</th>
+<th>Position</th>
+<th>Probability</th>
+<th>Effect</th>
+<th>Reason</th>
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for mutation in record.top_mutations %}
+
+<tr>
+
+<td>{{ loop.index }}</td>
+
+<td>{{ mutation.change }}</td>
+
+<td>{{ mutation.position }}</td>
+
+<td>
+<span class="badge high">
+{{ mutation.label }}
+</span>
+{{ mutation.probability }}%
+</td>
+
+<td>{{ mutation.effect }}</td>
+
+<td>{{ mutation.context }}</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</section>
+
+{% endfor %}
+{% endif %}
+
+</main>
+
+</body>
 </html>

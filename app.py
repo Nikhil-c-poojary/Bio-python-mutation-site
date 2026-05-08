@@ -21,7 +21,6 @@ def index():
 
     result = None
     error = None
-    fasta_text = ""
 
     if request.method == "POST":
 
@@ -32,10 +31,8 @@ def index():
 
             if not sample_text or not reference_text:
                 raise ValueError(
-                    "Both sample and reference sequences are required"
+                    "Both sample and reference FASTA sequences are required"
                 )
-
-            fasta_text = sample_text
 
             sample_record = read_fasta(sample_text)
             reference_record = read_fasta(reference_text)
@@ -89,7 +86,7 @@ def index():
                         "probability": 95,
                         "label": "HIGH",
                         "effect": "Substitution",
-                        "context": "Detected through sequence alignment",
+                        "context": "Actual mismatch detected",
                         "position_percent": (
                             pos / max(len(reference_seq), 1)
                         ) * 100,
@@ -127,7 +124,6 @@ def index():
         "index.html",
         result=result,
         error=error,
-        fasta_text=fasta_text,
     )
 
 

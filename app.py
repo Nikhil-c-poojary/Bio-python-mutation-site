@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request
-                if a == b:
                     alignment_visual.append("|")
                 else:
                     alignment_visual.append(" ")

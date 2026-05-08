@@ -40,10 +40,14 @@ def index():
             sample_seq = str(sample_record.seq).upper()
             reference_seq = str(reference_record.seq).upper()
 
-            alignment = pairwise2.align.globalxx(
-                reference_seq,
-                sample_seq
-            )[0]
+           alignment = pairwise2.align.globalms(
+    reference_seq,
+    sample_seq,
+    2,
+    -1,
+    -2,
+    -0.5
+)[0]
 
             aligned_ref = alignment.seqA
             aligned_sample = alignment.seqB
@@ -66,35 +70,44 @@ def index():
                 + aligned_sample
             )
 
-            mutations = []
+          mutations = []
 
-            pos = 0
+pos = 0
 
-            for i in range(len(aligned_ref)):
+for i in range(len(aligned_ref)):
 
-                ref_base = aligned_ref[i]
-                sample_base = aligned_sample[i]
+    ref_base = aligned_ref[i]
+    sample_base = aligned_sample[i]
 
-                if ref_base != "-":
-                    pos += 1
+    # Skip double gaps
+    if ref_base == "-" and sample_base == "-":
+        continue
 
-                if ref_base != sample_base:
+    # Track real nucleotide position
+    if ref_base != "-":
+        pos += 1
 
-                    mutation = {
-                        "change": f"{ref_base}→{sample_base}",
-                        "position": pos,
-                        "probability": 95,
-                        "label": "HIGH",
-                        "effect": "Substitution",
-                        "context": "Actual mismatch detected",
-                        "position_percent": (
-                            pos / max(len(reference_seq), 1)
-                        ) * 100,
-                    }
+    # Ignore insertion/deletion gap artifacts
+    if ref_base == "-" or sample_base == "-":
+        continue
 
-                    mutations.append(mutation)
+    # Detect actual substitution mutation
+    if ref_base != sample_base:
 
-            gc_count = (
+        mutation = {
+            "change": f"{ref_base}→{sample_base}",
+            "position": pos,
+            "probability": 95,
+            "label": "HIGH",
+            "effect": "Substitution",
+            "context": "Actual mismatch detected",
+            "position_percent": (
+                pos / max(len(reference_seq), 1)
+            ) * 100,
+        }
+
+        mutations.append(mutation)
+           gc_count = (
                 sample_seq.count("G")
                 + sample_seq.count("C")
             )

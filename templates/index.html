@@ -34,43 +34,4 @@ Upload reference and sample FASTA files for DNA mutation analysis.
 
 <section class="workspace">
 
-<form method="post" enctype="multipart/form-data" class="input-panel">
-
-<label for="fasta_text">Sample Sequence Preview</label>
-
-<textarea
-id="fasta_text"
-name="fasta_text"
-spellcheck="false"
->{{ fasta_text }}</textarea>
-
-<div class="controls">
-
-<label class="file-button">
-<input type="file" name="fasta_file" accept=".fa,.fasta,.fna,.txt">
-Upload Sample FASTA
-</label>
-
-<label class="file-button">
-<input type="file" name="reference_file" accept=".fa,.fasta,.fna,.txt">
-Upload Reference FASTA
-</label>
-
-<button type="submit">Analyze Sequence</button>
-
-</div>
-
-</form>
-
-<aside class="note-panel">
-<h2>Platform Features</h2>
-
-<p>
-Sequence alignment, mutation detection,
-SNV analysis and graphical mutation mapping.
-</p>
-
-<p class="small">
-Educational tool only.
-</p>
 </html>

@@ -1,10 +1,63 @@
+from flask import Flask, render_template, request
 from Bio import SeqIO, pairwise2
 from io import StringIO
 
 app = Flask(__name__)
 
-from flask import Flask, render_template, request
+
+def read_fasta(content):
+    handle = StringIO(content)
+
+    records = list(SeqIO.parse(handle, "fasta"))
+
+    if not records:
+        raise ValueError("No valid FASTA sequence found")
+
+    return records[0]
+
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+
+    result = None
+    error = None
+    fasta_text = ""
+
+    if request.method == "POST":
+
+        try:
+
+            sample_text = request.form.get("sample_sequence")
+            reference_text = request.form.get("reference_sequence")
+
+            if not sample_text or not reference_text:
+                raise ValueError(
+                    "Both sample and reference sequences are required"
+                )
+
+            fasta_text = sample_text
+
+            sample_record = read_fasta(sample_text)
+            reference_record = read_fasta(reference_text)
+
+            sample_seq = str(sample_record.seq).upper()
+            reference_seq = str(reference_record.seq).upper()
+
+            alignment = pairwise2.align.globalxx(
+                reference_seq,
+                sample_seq
+            )[0]
+
+            aligned_ref = alignment.seqA
+            aligned_sample = alignment.seqB
+
+            alignment_visual = []
+
+            for a, b in zip(aligned_ref, aligned_sample):
+
+                if a == b:
                     alignment_visual.append("|")
+
                 else:
                     alignment_visual.append(" ")
 
@@ -21,6 +74,7 @@ from flask import Flask, render_template, request
             pos = 0
 
             for i in range(len(aligned_ref)):
+
                 ref_base = aligned_ref[i]
                 sample_base = aligned_sample[i]
 
@@ -28,18 +82,12 @@ from flask import Flask, render_template, request
                     pos += 1
 
                 if ref_base != sample_base:
-                    probability = 95
-                    label = "HIGH"
 
                     mutation = {
                         "change": f"{ref_base}→{sample_base}",
                         "position": pos,
-                        "probability": probability,
-                        "label": label,
-                        "codon": "---",
-                        "mutated_codon": "---",
-                        "amino_acid": "Unknown",
-                        "mutated_amino_acid": "Unknown",
+                        "probability": 95,
+                        "label": "HIGH",
                         "effect": "Substitution",
                         "context": "Detected through sequence alignment",
                         "position_percent": (
@@ -49,8 +97,15 @@ from flask import Flask, render_template, request
 
                     mutations.append(mutation)
 
-            gc_count = sample_seq.count("G") + sample_seq.count("C")
-            gc_percent = round((gc_count / len(sample_seq)) * 100, 2)
+            gc_count = (
+                sample_seq.count("G")
+                + sample_seq.count("C")
+            )
+
+            gc_percent = round(
+                (gc_count / len(sample_seq)) * 100,
+                2
+            )
 
             result = [
                 {

@@ -1,54 +1,88 @@
+```python
 from flask import Flask, render_template, request
-from Bio import SeqIO
+from Bio import SeqIO, pairwise2
 from Bio.Seq import Seq
-from Bio import pairwise2
 from io import StringIO
+from collections import Counter
+import warnings
 
-
-# ==========================================
-# FLASK APPLICATION
-# ==========================================
+warnings.filterwarnings("ignore", category=UserWarning)
 
 app = Flask(__name__)
 
 
-# ==========================================
-# FASTA PARSING
-# ==========================================
+# -----------------------------------------
+# AMINO ACID INFORMATION
+# -----------------------------------------
+
+AMINO_ACIDS = {
+    "A": "Alanine",
+    "R": "Arginine",
+    "N": "Asparagine",
+    "D": "Aspartic acid",
+    "C": "Cysteine",
+    "E": "Glutamic acid",
+    "Q": "Glutamine",
+    "G": "Glycine",
+    "H": "Histidine",
+    "I": "Isoleucine",
+    "L": "Leucine",
+    "K": "Lysine",
+    "M": "Methionine",
+    "F": "Phenylalanine",
+    "P": "Proline",
+    "S": "Serine",
+    "T": "Threonine",
+    "W": "Tryptophan",
+    "Y": "Tyrosine",
+    "V": "Valine",
+    "*": "Stop"
+}
+
+
+# -----------------------------------------
+# FASTA PARSING AND VALIDATION
+# -----------------------------------------
 
 def parse_fasta(sequence_text):
 
     if not sequence_text or not sequence_text.strip():
-        raise ValueError("Please enter a FASTA sequence.")
+        raise ValueError("Please enter a DNA FASTA sequence.")
+
+    sequence_text = sequence_text.strip()
+
+    # Allow users to enter a raw DNA sequence
+    if not sequence_text.startswith(">"):
+        sequence_text = ">Sequence\n" + sequence_text
 
     try:
-        records = list(SeqIO.parse(
-            StringIO(sequence_text.strip()), "fasta"
-        ))
+        records = list(
+            SeqIO.parse(StringIO(sequence_text), "fasta")
+        )
 
         if not records:
-            raise ValueError(
-                "Invalid FASTA format. Please include a header starting with >."
-            )
+            raise ValueError("Invalid FASTA format.")
 
         record = records[0]
 
         sequence = str(record.seq).upper().replace(" ", "").replace("\n", "")
 
         if not sequence:
-            raise ValueError("The FASTA sequence is empty.")
+            raise ValueError("The DNA sequence is empty.")
 
-        invalid = set(sequence) - set("ATGCN")
+        invalid_bases = set(sequence) - set("ATGCN")
 
-        if invalid:
+        if invalid_bases:
             raise ValueError(
-                "Invalid DNA characters detected: "
-                + ", ".join(sorted(invalid))
+                "Invalid DNA characters found: "
+                + ", ".join(sorted(invalid_bases))
             )
 
-        record.seq = Seq(sequence)
-
-        return record
+        return {
+            "id": record.id,
+            "description": record.description,
+            "sequence": sequence
+        }
 
     except ValueError:
         raise
@@ -57,123 +91,106 @@ def parse_fasta(sequence_text):
         raise ValueError("Unable to read the FASTA sequence.")
 
 
-# ==========================================
-# GC CONTENT
-# ==========================================
+# -----------------------------------------
+# GC AND AT CONTENT
+# -----------------------------------------
 
-def calculate_gc(sequence):
+def calculate_sequence_statistics(sequence):
 
-    if not sequence:
-        return 0.0
+    counts = Counter(sequence)
 
-    gc_count = sequence.count("G") + sequence.count("C")
+    length = len(sequence)
 
-    return round((gc_count / len(sequence)) * 100, 2)
+    gc_count = counts["G"] + counts["C"]
+    at_count = counts["A"] + counts["T"]
 
+    gc_content = (
+        (gc_count / length) * 100 if length else 0
+    )
 
-# ==========================================
-# AMINO ACID ANALYSIS
-# ==========================================
+    at_content = (
+        (at_count / length) * 100 if length else 0
+    )
 
-def amino_acid_name(codon):
-
-    if len(codon) != 3 or "-" in codon or "N" in codon:
-        return "Unknown"
-
-    try:
-        amino = str(Seq(codon).translate())
-
-        names = {
-            "A": "Alanine (Ala)",
-            "R": "Arginine (Arg)",
-            "N": "Asparagine (Asn)",
-            "D": "Aspartic acid (Asp)",
-            "C": "Cysteine (Cys)",
-            "Q": "Glutamine (Gln)",
-            "E": "Glutamic acid (Glu)",
-            "G": "Glycine (Gly)",
-            "H": "Histidine (His)",
-            "I": "Isoleucine (Ile)",
-            "L": "Leucine (Leu)",
-            "K": "Lysine (Lys)",
-            "M": "Methionine (Met)",
-            "F": "Phenylalanine (Phe)",
-            "P": "Proline (Pro)",
-            "S": "Serine (Ser)",
-            "T": "Threonine (Thr)",
-            "W": "Tryptophan (Trp)",
-            "Y": "Tyrosine (Tyr)",
-            "V": "Valine (Val)",
-            "*": "Stop codon"
-        }
-
-        return names.get(amino, "Unknown")
-
-    except Exception:
-        return "Unknown"
-
-
-# ==========================================
-# MUTATION CLASSIFICATION
-# ==========================================
-
-def analyse_codon(reference, sample, position):
-
-    result = {
-        "codon_change": "Not applicable",
-        "ref_aa": "Not analysed",
-        "sample_aa": "Not analysed",
-        "protein_change": "Not analysed",
-        "effect": "Not classified"
+    return {
+        "length": length,
+        "gc": round(gc_content, 2),
+        "at": round(at_content, 2),
+        "gc_count": gc_count,
+        "at_count": at_count,
+        "a_count": counts["A"],
+        "t_count": counts["T"],
+        "g_count": counts["G"],
+        "c_count": counts["C"],
+        "n_count": counts["N"]
     }
 
-    # Amino acid analysis is performed for substitutions
-    # using the original reference reading frame.
 
-    codon_start = ((position - 1) // 3) * 3
+# -----------------------------------------
+# CODON AND AMINO ACID ANALYSIS
+# -----------------------------------------
 
-    ref_codon = reference[codon_start:codon_start + 3]
-    sample_codon = sample[codon_start:codon_start + 3]
+def translate_codon(sequence, position):
 
-    if (
-        len(ref_codon) != 3
-        or len(sample_codon) != 3
-        or "N" in ref_codon
-        or "N" in sample_codon
-    ):
-        return result
+    start = ((position - 1) // 3) * 3
 
-    ref_aa = str(Seq(ref_codon).translate())
-    sample_aa = str(Seq(sample_codon).translate())
+    codon = sequence[start:start + 3]
 
-    result["codon_change"] = f"{ref_codon} → {sample_codon}"
+    if len(codon) != 3 or "N" in codon:
+        return codon, "Unknown", "X"
 
-    result["ref_aa"] = amino_acid_name(ref_codon)
+    amino_acid_code = str(Seq(codon).translate())
 
-    result["sample_aa"] = amino_acid_name(sample_codon)
+    amino_acid_name = AMINO_ACIDS.get(
+        amino_acid_code,
+        "Unknown"
+    )
 
-    result["protein_change"] = f"{ref_aa} → {sample_aa}"
+    return codon, amino_acid_name, amino_acid_code
 
-    if ref_aa == sample_aa:
-        result["effect"] = "Synonymous"
 
-    elif sample_aa == "*":
-        result["effect"] = "Stop gained"
+def analyse_codon(reference, sample, ref_position, sample_position):
 
-    elif ref_aa == "*":
-        result["effect"] = "Stop lost"
+    ref_codon, ref_aa, ref_code = translate_codon(
+        reference, ref_position
+    )
+
+    sample_codon, sample_aa, sample_code = translate_codon(
+        sample, sample_position
+    )
+
+    if len(ref_codon) != 3 or len(sample_codon) != 3:
+        effect = "Incomplete codon"
+
+    elif "N" in ref_codon or "N" in sample_codon:
+        effect = "Unknown"
+
+    elif ref_code == sample_code:
+        effect = "Synonymous"
+
+    elif sample_code == "*":
+        effect = "Nonsense"
+
+    elif ref_code == "*":
+        effect = "Stop-loss"
 
     else:
-        result["effect"] = "Nonsynonymous"
+        effect = "Nonsynonymous"
 
-    return result
+    return {
+        "codon_change": f"{ref_codon} → {sample_codon}",
+        "ref_aa": ref_aa,
+        "sample_aa": sample_aa,
+        "protein_change": f"{ref_aa} → {sample_aa}",
+        "effect": effect
+    }
 
 
-# ==========================================
-# MUTATION DETECTION
-# ==========================================
+# -----------------------------------------
+# DNA SEQUENCE ALIGNMENT
+# -----------------------------------------
 
-def detect_mutations(reference, sample):
+def align_sequences(reference, sample):
 
     alignments = pairwise2.align.globalms(
         reference,
@@ -181,188 +198,296 @@ def detect_mutations(reference, sample):
         2,
         -1,
         -5,
-        -0.5
+        -0.5,
+        one_alignment_only=True
     )
 
     if not alignments:
-        raise ValueError("Unable to align the sequences.")
+        raise ValueError("Unable to align the DNA sequences.")
 
-    aligned = alignments[0]
+    alignment = alignments[0]
 
-    ref_aligned = aligned.seqA
-    sample_aligned = aligned.seqB
+    reference_aligned = alignment.seqA
+    sample_aligned = alignment.seqB
+
+    return (
+        reference_aligned,
+        sample_aligned,
+        alignment.score
+    )
+
+
+# -----------------------------------------
+# MUTATION DETECTION
+# -----------------------------------------
+
+def detect_mutations(
+    reference,
+    sample,
+    reference_aligned,
+    sample_aligned
+):
 
     mutations = []
 
-    ref_position = 0
+    reference_position = 0
+    sample_position = 0
+
+    aligned_bases = []
+
+    substitution_count = 0
+    insertion_count = 0
+    deletion_count = 0
 
     for ref_base, sample_base in zip(
-        ref_aligned,
+        reference_aligned,
         sample_aligned
     ):
 
         if ref_base != "-":
-            ref_position += 1
+            reference_position += 1
 
-        if ref_base == sample_base:
+        if sample_base != "-":
+            sample_position += 1
+
+        is_match = ref_base == sample_base
+
+        # Data for DNA sequence comparison visualization
+        aligned_bases.append({
+            "reference": ref_base,
+            "sample": sample_base,
+            "match": is_match
+        })
+
+        if is_match:
             continue
 
-        if ref_base != "-" and sample_base != "-":
+        if ref_base == "-":
+            mutation_type = "Insertion"
+            insertion_count += 1
+            position = max(1, reference_position)
 
+            codon_info = {
+                "codon_change": "Not applicable",
+                "ref_aa": "Unknown",
+                "sample_aa": "Unknown",
+                "protein_change": "Not determined",
+                "effect": "Requires frameshift analysis"
+            }
+
+        elif sample_base == "-":
+            mutation_type = "Deletion"
+            deletion_count += 1
+            position = reference_position
+
+            codon_info = {
+                "codon_change": "Not applicable",
+                "ref_aa": "Unknown",
+                "sample_aa": "Unknown",
+                "protein_change": "Not determined",
+                "effect": "Requires frameshift analysis"
+            }
+
+        else:
             mutation_type = "Substitution"
-
-            change = f"{ref_base} → {sample_base}"
+            substitution_count += 1
+            position = reference_position
 
             codon_info = analyse_codon(
                 reference,
                 sample,
-                ref_position
+                reference_position,
+                sample_position
             )
 
-        elif ref_base == "-":
-
-            mutation_type = "Insertion"
-
-            change = f"- → {sample_base}"
-
-            codon_info = {
-                "codon_change": "Not analysed",
-                "ref_aa": "Not analysed",
-                "sample_aa": "Not analysed",
-                "protein_change": "Not analysed",
-                "effect": "Not classified"
-            }
-
-        else:
-
-            mutation_type = "Deletion"
-
-            change = f"{ref_base} → -"
-
-            codon_info = {
-                "codon_change": "Not analysed",
-                "ref_aa": "Not analysed",
-                "sample_aa": "Not analysed",
-                "protein_change": "Not analysed",
-                "effect": "Not classified"
-            }
+        position_percent = round(
+            (position / len(reference)) * 100,
+            2
+        ) if reference else 0
 
         mutation = {
-            "change": change,
-            "position": ref_position,
+            "position": position,
+            "position_percent": position_percent,
+            "change": f"{ref_base} → {sample_base}",
             "type": mutation_type,
-            "label": "Detected",
-
             **codon_info
         }
-
-        mutation["position_percent"] = round(
-            (ref_position / max(len(reference), 1)) * 100,
-            2
-        )
 
         mutations.append(mutation)
 
     alignment_text = (
-        ref_aligned
-        + "\n"
+        f"Reference: {reference_aligned}\n"
+        f"           "
         + "".join(
             "|" if a == b else " "
-            for a, b in zip(ref_aligned, sample_aligned)
+            for a, b in zip(
+                reference_aligned,
+                sample_aligned
+            )
         )
-        + "\n"
-        + sample_aligned
+        + f"\nSample:    {sample_aligned}"
     )
 
-    return (
-        mutations,
-        alignment_text,
-        aligned.score
-    )
+    return {
+        "mutations": mutations,
+        "aligned_bases": aligned_bases,
+        "reference_aligned": reference_aligned,
+        "sample_aligned": sample_aligned,
+        "alignment": alignment_text,
+        "substitution_count": substitution_count,
+        "insertion_count": insertion_count,
+        "deletion_count": deletion_count
+    }
 
 
-# ==========================================
-# MAIN ANALYSIS
-# ==========================================
+# -----------------------------------------
+# COMPLETE SEQUENCE ANALYSIS
+# -----------------------------------------
 
-def analyse_sequences(sample_text, reference_text):
-
-    sample_record = parse_fasta(sample_text)
+def analyse_sequences(reference_text, sample_text):
 
     reference_record = parse_fasta(reference_text)
+    sample_record = parse_fasta(sample_text)
 
-    sample = str(sample_record.seq)
+    reference = reference_record["sequence"]
+    sample = sample_record["sequence"]
 
-    reference = str(reference_record.seq)
+    reference_stats = calculate_sequence_statistics(
+        reference
+    )
 
-    mutations, alignment_text, score = detect_mutations(
-        reference,
+    sample_stats = calculate_sequence_statistics(
         sample
     )
 
-    record = {
+    (
+        reference_aligned,
+        sample_aligned,
+        alignment_score
+    ) = align_sequences(reference, sample)
 
-        "id": sample_record.id,
+    mutation_results = detect_mutations(
+        reference,
+        sample,
+        reference_aligned,
+        sample_aligned
+    )
 
-        "description": sample_record.description,
+    mutations = mutation_results["mutations"]
 
-        "reference_id": reference_record.id,
+    # -------------------------------------
+    # MUTATION EFFECT COUNTS
+    # -------------------------------------
+
+    effect_counts = Counter(
+        mutation["effect"]
+        for mutation in mutations
+    )
+
+    mutation_type_counts = Counter(
+        mutation["type"]
+        for mutation in mutations
+    )
+
+    # -------------------------------------
+    # FINAL RESULT
+    # -------------------------------------
+
+    result = {
+
+        # Sequence information
+        "id": sample_record["id"],
+        "description": sample_record["description"],
+        "reference_id": reference_record["id"],
 
         "reference_length": len(reference),
-
         "length": len(sample),
-
-        "gc": calculate_gc(sample),
 
         "sequence": sample,
 
-        "alignment": alignment_text,
+        # GC content statistics
+        "gc": sample_stats["gc"],
+        "at": sample_stats["at"],
 
-        "alignment_score": round(score, 2),
+        "gc_count": sample_stats["gc_count"],
+        "at_count": sample_stats["at_count"],
 
+        "a_count": sample_stats["a_count"],
+        "t_count": sample_stats["t_count"],
+        "g_count": sample_stats["g_count"],
+        "c_count": sample_stats["c_count"],
+        "n_count": sample_stats["n_count"],
+
+        # Reference statistics
+        "reference_gc": reference_stats["gc"],
+        "reference_at": reference_stats["at"],
+
+        # DNA comparison visualization
+        "reference_aligned": reference_aligned,
+        "sample_aligned": sample_aligned,
+
+        "aligned_bases": mutation_results["aligned_bases"],
+        "aligned_length": len(reference_aligned),
+
+        # Alignment information
+        "alignment": mutation_results["alignment"],
+        "alignment_score": round(alignment_score, 2),
+
+        # Mutation information
         "mutation_count": len(mutations),
 
-        "top_mutations": mutations[:25]
+        "substitution_count": mutation_results["substitution_count"],
+        "insertion_count": mutation_results["insertion_count"],
+        "deletion_count": mutation_results["deletion_count"],
+
+        "mutation_type_counts": dict(mutation_type_counts),
+        "effect_counts": dict(effect_counts),
+
+        "top_mutations": mutations[:25],
+
+        # Codon and amino acid information
+        "codon_mutations": [
+            mutation
+            for mutation in mutations
+            if mutation["type"] == "Substitution"
+        ][:25]
     }
 
-    return [record]
+    return [result]
 
 
-# ==========================================
-# HOME PAGE
-# ==========================================
+# -----------------------------------------
+# FLASK ROUTE
+# -----------------------------------------
 
 @app.route("/", methods=["GET", "POST"])
 def index():
 
     result = None
-
     error = None
 
     if request.method == "POST":
-
-        sample_sequence = request.form.get(
-            "sample_sequence", ""
-        )
 
         reference_sequence = request.form.get(
             "reference_sequence", ""
         )
 
+        sample_sequence = request.form.get(
+            "sample_sequence", ""
+        )
+
         try:
 
             result = analyse_sequences(
-                sample_sequence,
-                reference_sequence
+                reference_sequence,
+                sample_sequence
             )
 
         except ValueError as e:
 
             error = str(e)
 
-        except Exception as e:
-
-            app.logger.exception("Sequence analysis failed")
+        except Exception:
 
             error = (
                 "An unexpected error occurred during analysis. "
@@ -376,14 +501,15 @@ def index():
     )
 
 
-# ==========================================
-# VERCEL ENTRY POINT
-# ==========================================
+# -----------------------------------------
+# LOCAL EXECUTION
+# -----------------------------------------
 
 if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
         port=5000,
-        debug=False
+        debug=True
     )
+```

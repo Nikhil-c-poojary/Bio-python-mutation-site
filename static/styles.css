@@ -1,9 +1,7 @@
 /* =========================================
    GENE MUTATION POSSIBILITY ANALYZER
-   Modern Bioinformatics Dashboard
+   BIOINFORMATICS DASHBOARD
 ========================================= */
-
-/* GLOBAL RESET */
 
 *,
 *::before,
@@ -56,32 +54,24 @@ body {
 
 .shell {
     width: min(1250px, calc(100% - 40px));
-    max-width: 100%;
     margin: 0 auto;
-    padding: 55px 0;
+    padding: 45px 0;
 }
 
-/* =========================================
-   WEBSITE BANNER
-========================================= */
+/* WEBSITE BANNER */
 
 .website-banner {
-    position: relative;
     width: 100%;
     margin: 0 auto 30px;
     overflow: hidden;
     border-radius: 18px;
     border: 1px solid rgba(56, 189, 248, 0.18);
-
-    /* Fade into the dark dashboard */
-
     -webkit-mask-image: linear-gradient(
         to bottom,
         black 0%,
         black 75%,
         transparent 100%
     );
-
     mask-image: linear-gradient(
         to bottom,
         black 0%,
@@ -96,7 +86,6 @@ body {
     height: auto;
     object-fit: cover;
     object-position: center;
-
     transition: transform 0.5s ease;
 }
 
@@ -213,6 +202,42 @@ h3 {
     margin-bottom: 10px;
 }
 
+/* DEMO NOTICE */
+
+.demo-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    padding: 17px;
+    margin-bottom: 25px;
+    background: rgba(56, 189, 248, 0.07);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 14px;
+}
+
+.demo-dot {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    margin-top: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.7);
+}
+
+.demo-notice strong {
+    display: block;
+    color: var(--primary);
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+}
+
+.demo-notice p {
+    color: #cbd5e1;
+    font-size: 0.82rem;
+    margin-top: 4px;
+}
+
 /* INPUT FIELDS */
 
 label {
@@ -229,16 +254,12 @@ textarea {
     max-width: 100%;
     min-width: 0;
     min-height: 200px;
-
-    box-sizing: border-box;
     resize: vertical;
 
     background: var(--input);
     color: #a5f3fc;
-
     border: 1px solid #334155;
     border-radius: 14px;
-
     padding: 18px;
 
     font-family: "Consolas", "Courier New", monospace;
@@ -262,13 +283,13 @@ textarea:focus {
 
 .controls {
     display: flex;
+    flex-wrap: wrap;
     gap: 14px;
     margin-top: 22px;
 }
 
 button {
     border: none;
-
     background: linear-gradient(
         120deg,
         #0284c7,
@@ -373,6 +394,15 @@ button:hover {
     font-size: 0.9rem;
 }
 
+.result-description {
+    color: #cbd5e1;
+    margin: 8px 0;
+}
+
+.result-description strong {
+    color: var(--primary);
+}
+
 /* STATISTICS */
 
 .stat-grid {
@@ -403,12 +433,19 @@ button:hover {
     font-size: 1.25rem;
 }
 
-/* DNA SEQUENCE */
+/* RESULT SECTIONS */
 
-.sequence-panel {
-    margin-top: 30px;
+.result-section,
+.sequence-panel,
+.alignment-panel,
+.graph-panel,
+.table-section,
+.amino-panel {
+    margin-top: 35px;
     min-width: 0;
 }
+
+/* DNA SEQUENCE */
 
 .sequence-strip {
     margin-top: 15px;
@@ -421,16 +458,10 @@ button:hover {
     font-family: "Consolas", monospace;
     font-size: 0.9rem;
     line-height: 2;
-
     overflow-wrap: anywhere;
 }
 
 /* ALIGNMENT */
-
-.alignment-panel {
-    margin-top: 35px;
-    min-width: 0;
-}
 
 .alignment-box {
     margin-top: 15px;
@@ -439,7 +470,6 @@ button:hover {
     background: #060d19;
     border: 1px solid #263750;
     border-radius: 14px;
-
     overflow-x: auto;
     max-width: 100%;
 }
@@ -453,10 +483,6 @@ button:hover {
 }
 
 /* MUTATION DISTRIBUTION */
-
-.graph-panel {
-    margin-top: 35px;
-}
 
 .graph-bar {
     position: relative;
@@ -476,7 +502,6 @@ button:hover {
 .mutation-marker {
     position: absolute;
     top: -8px;
-
     width: 13px;
     height: 32px;
 
@@ -495,12 +520,7 @@ button:hover {
     margin-top: 12px;
 }
 
-/* MUTATION TABLE */
-
-.table-section {
-    margin-top: 40px;
-    min-width: 0;
-}
+/* TABLES */
 
 .table-wrap {
     overflow-x: auto;
@@ -558,15 +578,13 @@ tbody tr:hover {
     font-size: 0.7rem;
     font-weight: 800;
     letter-spacing: 0.5px;
+
+    background: rgba(56, 189, 248, 0.12);
+    color: #7dd3fc;
+    border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
-.badge.detected {
-    background: rgba(52, 211, 153, 0.13);
-    color: #6ee7b7;
-    border: 1px solid rgba(52, 211, 153, 0.3);
-}
-
-/* NO MUTATION MESSAGE */
+/* SUCCESS MESSAGE */
 
 .success-message {
     margin-top: 20px;
@@ -583,6 +601,13 @@ tbody tr:hover {
 
 .success-message p {
     color: #cbd5e1;
+}
+
+/* AMINO ACID PANEL */
+
+.amino-panel > p {
+    color: #cbd5e1;
+    margin-bottom: 15px;
 }
 
 /* SCIENTIFIC NOTE */
@@ -615,6 +640,10 @@ tbody tr:hover {
     text-align: center;
     border-top: 1px solid var(--border);
     color: #cbd5e1;
+}
+
+.footer h3 {
+    color: #f1f5f9;
 }
 
 .footer span {
@@ -667,6 +696,16 @@ tbody tr:hover {
         padding: 30px 0;
     }
 
+    .website-banner {
+        margin-bottom: 20px;
+        border-radius: 12px;
+    }
+
+    .website-banner img {
+        width: 100%;
+        height: auto;
+    }
+
     h1 {
         font-size: 2.3rem;
     }
@@ -696,17 +735,5 @@ tbody tr:hover {
 
     .alignment-box {
         padding: 12px;
-    }
-
-    /* MOBILE BANNER */
-
-    .website-banner {
-        margin-bottom: 20px;
-        border-radius: 12px;
-    }
-
-    .website-banner img {
-        width: 100%;
-        height: auto;
     }
 }

@@ -1,527 +1,389 @@
-<!DOCTYPE html>
-<html lang="en">
+from flask import Flask, render_template, request
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio import pairwise2
+from io import StringIO
 
-<head>
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+# ==========================================
+# FLASK APPLICATION
+# ==========================================
 
-    <title>Gene Mutation Possibility Analyzer</title>
+app = Flask(__name__)
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='styles.css') }}">
 
-</head>
+# ==========================================
+# FASTA PARSING
+# ==========================================
 
-<body>
+def parse_fasta(sequence_text):
 
-<main class="shell">
+    if not sequence_text or not sequence_text.strip():
+        raise ValueError("Please enter a FASTA sequence.")
 
-    <!-- HERO SECTION -->
+    try:
+        records = list(SeqIO.parse(
+            StringIO(sequence_text.strip()), "fasta"
+        ))
 
-    <section class="hero">
+        if not records:
+            raise ValueError(
+                "Invalid FASTA format. Please include a header starting with >."
+            )
 
-        <div>
+        record = records[0]
 
-            <p class="eyebrow">BIOPYTHON • GENOMIC ANALYSIS</p>
+        sequence = str(record.seq).upper().replace(" ", "").replace("\n", "")
 
-            <h1>Gene Mutation Possibility Analyzer</h1>
+        if not sequence:
+            raise ValueError("The FASTA sequence is empty.")
 
-            <p class="lede">
-                Analyze DNA sequences, identify mutations,
-                compare codon changes and predict possible
-                amino acid effects using Biopython.
-            </p>
+        invalid = set(sequence) - set("ATGCN")
 
-        </div>
+        if invalid:
+            raise ValueError(
+                "Invalid DNA characters detected: "
+                + ", ".join(sorted(invalid))
+            )
 
-        <div class="metrics">
+        record.seq = Seq(sequence)
 
-            <span>POWERED BY</span>
+        return record
 
-            <strong>Flask + Biopython</strong>
+    except ValueError:
+        raise
 
-            <small>Sequence Analysis Platform</small>
+    except Exception:
+        raise ValueError("Unable to read the FASTA sequence.")
 
-        </div>
 
-    </section>
+# ==========================================
+# GC CONTENT
+# ==========================================
 
+def calculate_gc(sequence):
 
-    <!-- INPUT WORKSPACE -->
+    if not sequence:
+        return 0.0
 
-    <section class="workspace">
+    gc_count = sequence.count("G") + sequence.count("C")
 
-        <form method="POST" class="input-panel" id="sequenceForm">
+    return round((gc_count / len(sequence)) * 100, 2)
 
-            <h2>Sequence Input</h2>
 
-            <p class="small">
-                Enter reference and sample DNA sequences in FASTA format.
-            </p>
+# ==========================================
+# AMINO ACID ANALYSIS
+# ==========================================
 
-            <label for="sample_sequence">
-                Sample FASTA Sequence
-            </label>
+def amino_acid_name(codon):
 
-            <textarea
-                id="sample_sequence"
-                name="sample_sequence"
-                placeholder=">Sample_Sequence&#10;ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
-                required>{{ request.form.get('sample_sequence', '') }}</textarea>
+    if len(codon) != 3 or "-" in codon or "N" in codon:
+        return "Unknown"
 
+    try:
+        amino = str(Seq(codon).translate())
 
-            <label for="reference_sequence">
-                Reference FASTA Sequence
-            </label>
-
-            <textarea
-                id="reference_sequence"
-                name="reference_sequence"
-                placeholder=">Reference_Sequence&#10;ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
-                required>{{ request.form.get('reference_sequence', '') }}</textarea>
-
-
-            <div class="controls">
-
-                <button type="submit">
-                    Analyze DNA Sequence →
-                </button>
-
-                <button
-                    type="button"
-                    class="secondary-button"
-                    onclick="clearSequences()">
-
-                    Clear
-
-                </button>
-
-            </div>
-
-        </form>
-
-
-        <!-- FEATURES PANEL -->
-
-        <aside class="note-panel">
-
-            <p class="eyebrow">ANALYSIS MODULES</p>
-
-            <h2>Platform Features</h2>
-
-            <div class="feature-item">
-                <span>01</span>
-                <p>FASTA Sequence Parsing</p>
-            </div>
-
-            <div class="feature-item">
-                <span>02</span>
-                <p>Reference Sequence Alignment</p>
-            </div>
-
-            <div class="feature-item">
-                <span>03</span>
-                <p>Point Mutation Detection</p>
-            </div>
-
-            <div class="feature-item">
-                <span>04</span>
-                <p>Codon and Amino Acid Analysis</p>
-            </div>
-
-            <div class="feature-item">
-                <span>05</span>
-                <p>GC Content Calculation</p>
-            </div>
-
-            <div class="feature-item">
-                <span>06</span>
-                <p>Mutation Distribution Mapping</p>
-            </div>
-
-            <p class="small">
-                Designed for educational bioinformatics
-                and DNA sequence analysis.
-            </p>
-
-        </aside>
-
-    </section>
-
-
-    <!-- ERROR MESSAGE -->
-
-    {% if error %}
-
-    <section class="alert">
-
-        <h3>Analysis Error</h3>
-
-        <p>{{ error }}</p>
-
-    </section>
-
-    {% endif %}
-
-
-    <!-- RESULTS -->
-
-    {% if result %}
-
-    {% for record in result %}
-
-    <section class="results">
-
-        <!-- RESULT HEADER -->
-
-        <div class="result-head">
-
-            <div>
-
-                <p class="eyebrow">SEQUENCE ANALYSIS REPORT</p>
-
-                <h2>{{ record.id }}</h2>
-
-                <p>{{ record.description }}</p>
-
-                <p class="small">
-                    Reference: {{ record.reference_id }}
-                    | Reference Length: {{ record.reference_length }} bp
-                </p>
-
-            </div>
-
-
-            <!-- STATISTICS -->
-
-            <div class="stat-grid">
-
-                <div>
-                    <span>Sequence Length</span>
-                    <strong>{{ record.length }} bp</strong>
-                </div>
-
-                <div>
-                    <span>GC Content</span>
-                    <strong>{{ record.gc }}%</strong>
-                </div>
-
-                <div>
-                    <span>Detected Differences</span>
-                    <strong>{{ record.mutation_count }}</strong>
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- DNA SEQUENCE -->
-
-        <section class="sequence-panel">
-
-            <h2>Sample DNA Sequence</h2>
-
-            <div class="sequence-strip">
-                {{ record.sequence }}
-            </div>
-
-        </section>
-
-
-        <!-- ALIGNMENT -->
-
-        <section class="alignment-panel">
-
-            <h2>Sequence Alignment</h2>
-
-            <p class="small">
-                Identical bases are represented by vertical bars.
-            </p>
-
-            <div class="alignment-box">
-
-                <pre>{{ record.alignment }}</pre>
-
-            </div>
-
-            <p class="small">
-                Alignment Score: {{ record.alignment_score }}
-            </p>
-
-        </section>
-
-
-        <!-- MUTATION DISTRIBUTION -->
-
-        <section class="graph-panel">
-
-            <h2>Mutation Distribution</h2>
-
-            <p class="small">
-                Distribution of detected sequence differences
-                across the reference sequence.
-            </p>
-
-            <div class="graph-bar">
-
-                {% for mutation in record.top_mutations %}
-
-                <div
-                    class="mutation-marker"
-                    style="left: {{ mutation.position_percent }}%;"
-                    title="{{ mutation.change }} at position {{ mutation.position }}">
-                </div>
-
-                {% endfor %}
-
-            </div>
-
-            <div class="graph-labels">
-
-                <span>Start</span>
-
-                <span>Reference Sequence</span>
-
-                <span>End</span>
-
-            </div>
-
-        </section>
-
-
-        <!-- MUTATION TABLE -->
-
-        <section class="table-section">
-
-            <h2>Detected Mutations</h2>
-
-            <p class="small">
-                Sequence differences identified through
-                reference and sample alignment.
-            </p>
-
-            {% if record.top_mutations %}
-
-            <div class="table-wrap">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>No.</th>
-                            <th>Mutation</th>
-                            <th>Position</th>
-                            <th>Type</th>
-                            <th>Codon Change</th>
-                            <th>Reference Amino Acid</th>
-                            <th>Sample Amino Acid</th>
-                            <th>Protein Change</th>
-                            <th>Effect</th>
-                            <th>Status</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                        {% for mutation in record.top_mutations %}
-
-                        <tr>
-
-                            <td>{{ loop.index }}</td>
-
-                            <td>
-                                <strong>{{ mutation.change }}</strong>
-                            </td>
-
-                            <td>{{ mutation.position }}</td>
-
-                            <td>{{ mutation.type }}</td>
-
-                            <td>{{ mutation.codon_change }}</td>
-
-                            <td>{{ mutation.ref_aa }}</td>
-
-                            <td>{{ mutation.sample_aa }}</td>
-
-                            <td>
-                                <strong>
-                                    {{ mutation.protein_change }}
-                                </strong>
-                            </td>
-
-                            <td>{{ mutation.effect }}</td>
-
-                            <td>
-                                <span class="badge detected">
-                                    {{ mutation.label }}
-                                </span>
-                            </td>
-
-                        </tr>
-
-                        {% endfor %}
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-            {% if record.mutation_count > 25 %}
-
-            <p class="small">
-                Showing the first 25 detected differences
-                out of {{ record.mutation_count }}.
-            </p>
-
-            {% endif %}
-
-            {% else %}
-
-            <div class="success-message">
-
-                <h3>No Sequence Differences Detected</h3>
-
-                <p>
-                    The aligned reference and sample sequences
-                    show no differences.
-                </p>
-
-            </div>
-
-            {% endif %}
-
-        </section>
-
-
-        <!-- AMINO ACID ANALYSIS -->
-
-        <section class="amino-acid-panel">
-
-            <h2>Amino Acid Analysis</h2>
-
-            <p class="small">
-                Predicted protein-level effects of detected DNA mutations.
-            </p>
-
-            {% for mutation in record.top_mutations %}
-
-            <div class="feature-item">
-
-                <span>{{ loop.index }}</span>
-
-                <p>
-
-                    <strong>{{ mutation.codon_change }}</strong>
-
-                    |
-
-                    {{ mutation.ref_aa }}
-
-                    →
-
-                    {{ mutation.sample_aa }}
-
-                    |
-
-                    {{ mutation.protein_change }}
-
-                </p>
-
-            </div>
-
-            {% endfor %}
-
-        </section>
-
-
-        <!-- SCIENTIFIC NOTE -->
-
-        <section class="scientific-note">
-
-            <h3>Scientific Interpretation</h3>
-
-            <p>
-                Detected sequence differences represent variations
-                between the supplied reference and sample DNA sequences.
-                Synonymous and nonsynonymous classifications are based
-                on codon translation.
-            </p>
-
-            <p>
-                Amino acid predictions use the standard genetic code
-                and assume that the supplied sequence begins at the
-                first nucleotide of a coding region.
-            </p>
-
-            <p>
-                Mutation detection does not establish pathogenicity
-                or clinical significance. Results depend on sequence
-                orientation, coding frame and alignment accuracy.
-            </p>
-
-        </section>
-
-    </section>
-
-    {% endfor %}
-
-    {% endif %}
-
-
-    <!-- FOOTER -->
-
-    <footer class="footer">
-
-        <p>
-            Gene Mutation Possibility Analyzer
-        </p>
-
-        <span>
-            Developed using Python, Flask and Biopython
-        </span>
-
-        <p class="small">
-            Educational Bioinformatics Project by
-            NIKHIL.C [Final year B.Sc Alva's]
-        </p>
-
-    </footer>
-
-</main>
-
-
-<!-- CLEAR BUTTON SCRIPT -->
-
-<script>
-
-function clearSequences() {
-
-    document.getElementById("sample_sequence").value = "";
-
-    document.getElementById("reference_sequence").value = "";
-
-    // Remove previous results and errors
-    const results = document.querySelector(".results");
-    const alert = document.querySelector(".alert");
-
-    if (results) {
-        results.remove();
+        names = {
+            "A": "Alanine (Ala)",
+            "R": "Arginine (Arg)",
+            "N": "Asparagine (Asn)",
+            "D": "Aspartic acid (Asp)",
+            "C": "Cysteine (Cys)",
+            "Q": "Glutamine (Gln)",
+            "E": "Glutamic acid (Glu)",
+            "G": "Glycine (Gly)",
+            "H": "Histidine (His)",
+            "I": "Isoleucine (Ile)",
+            "L": "Leucine (Leu)",
+            "K": "Lysine (Lys)",
+            "M": "Methionine (Met)",
+            "F": "Phenylalanine (Phe)",
+            "P": "Proline (Pro)",
+            "S": "Serine (Ser)",
+            "T": "Threonine (Thr)",
+            "W": "Tryptophan (Trp)",
+            "Y": "Tyrosine (Tyr)",
+            "V": "Valine (Val)",
+            "*": "Stop codon"
+        }
+
+        return names.get(amino, "Unknown")
+
+    except Exception:
+        return "Unknown"
+
+
+# ==========================================
+# MUTATION CLASSIFICATION
+# ==========================================
+
+def analyse_codon(reference, sample, position):
+
+    result = {
+        "codon_change": "Not applicable",
+        "ref_aa": "Not analysed",
+        "sample_aa": "Not analysed",
+        "protein_change": "Not analysed",
+        "effect": "Not classified"
     }
 
-    if (alert) {
-        alert.remove();
+    # Amino acid analysis is performed for substitutions
+    # using the original reference reading frame.
+
+    codon_start = ((position - 1) // 3) * 3
+
+    ref_codon = reference[codon_start:codon_start + 3]
+    sample_codon = sample[codon_start:codon_start + 3]
+
+    if (
+        len(ref_codon) != 3
+        or len(sample_codon) != 3
+        or "N" in ref_codon
+        or "N" in sample_codon
+    ):
+        return result
+
+    ref_aa = str(Seq(ref_codon).translate())
+    sample_aa = str(Seq(sample_codon).translate())
+
+    result["codon_change"] = f"{ref_codon} → {sample_codon}"
+
+    result["ref_aa"] = amino_acid_name(ref_codon)
+
+    result["sample_aa"] = amino_acid_name(sample_codon)
+
+    result["protein_change"] = f"{ref_aa} → {sample_aa}"
+
+    if ref_aa == sample_aa:
+        result["effect"] = "Synonymous"
+
+    elif sample_aa == "*":
+        result["effect"] = "Stop gained"
+
+    elif ref_aa == "*":
+        result["effect"] = "Stop lost"
+
+    else:
+        result["effect"] = "Nonsynonymous"
+
+    return result
+
+
+# ==========================================
+# MUTATION DETECTION
+# ==========================================
+
+def detect_mutations(reference, sample):
+
+    alignments = pairwise2.align.globalms(
+        reference,
+        sample,
+        2,
+        -1,
+        -5,
+        -0.5
+    )
+
+    if not alignments:
+        raise ValueError("Unable to align the sequences.")
+
+    aligned = alignments[0]
+
+    ref_aligned = aligned.seqA
+    sample_aligned = aligned.seqB
+
+    mutations = []
+
+    ref_position = 0
+
+    for ref_base, sample_base in zip(
+        ref_aligned,
+        sample_aligned
+    ):
+
+        if ref_base != "-":
+            ref_position += 1
+
+        if ref_base == sample_base:
+            continue
+
+        if ref_base != "-" and sample_base != "-":
+
+            mutation_type = "Substitution"
+
+            change = f"{ref_base} → {sample_base}"
+
+            codon_info = analyse_codon(
+                reference,
+                sample,
+                ref_position
+            )
+
+        elif ref_base == "-":
+
+            mutation_type = "Insertion"
+
+            change = f"- → {sample_base}"
+
+            codon_info = {
+                "codon_change": "Not analysed",
+                "ref_aa": "Not analysed",
+                "sample_aa": "Not analysed",
+                "protein_change": "Not analysed",
+                "effect": "Not classified"
+            }
+
+        else:
+
+            mutation_type = "Deletion"
+
+            change = f"{ref_base} → -"
+
+            codon_info = {
+                "codon_change": "Not analysed",
+                "ref_aa": "Not analysed",
+                "sample_aa": "Not analysed",
+                "protein_change": "Not analysed",
+                "effect": "Not classified"
+            }
+
+        mutation = {
+            "change": change,
+            "position": ref_position,
+            "type": mutation_type,
+            "label": "Detected",
+
+            **codon_info
+        }
+
+        mutation["position_percent"] = round(
+            (ref_position / max(len(reference), 1)) * 100,
+            2
+        )
+
+        mutations.append(mutation)
+
+    alignment_text = (
+        ref_aligned
+        + "\n"
+        + "".join(
+            "|" if a == b else " "
+            for a, b in zip(ref_aligned, sample_aligned)
+        )
+        + "\n"
+        + sample_aligned
+    )
+
+    return (
+        mutations,
+        alignment_text,
+        aligned.score
+    )
+
+
+# ==========================================
+# MAIN ANALYSIS
+# ==========================================
+
+def analyse_sequences(sample_text, reference_text):
+
+    sample_record = parse_fasta(sample_text)
+
+    reference_record = parse_fasta(reference_text)
+
+    sample = str(sample_record.seq)
+
+    reference = str(reference_record.seq)
+
+    mutations, alignment_text, score = detect_mutations(
+        reference,
+        sample
+    )
+
+    record = {
+
+        "id": sample_record.id,
+
+        "description": sample_record.description,
+
+        "reference_id": reference_record.id,
+
+        "reference_length": len(reference),
+
+        "length": len(sample),
+
+        "gc": calculate_gc(sample),
+
+        "sequence": sample,
+
+        "alignment": alignment_text,
+
+        "alignment_score": round(score, 2),
+
+        "mutation_count": len(mutations),
+
+        "top_mutations": mutations[:25]
     }
 
-}
+    return [record]
 
-</script>
 
-</body>
-</html>
+# ==========================================
+# HOME PAGE
+# ==========================================
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+
+    result = None
+
+    error = None
+
+    if request.method == "POST":
+
+        sample_sequence = request.form.get(
+            "sample_sequence", ""
+        )
+
+        reference_sequence = request.form.get(
+            "reference_sequence", ""
+        )
+
+        try:
+
+            result = analyse_sequences(
+                sample_sequence,
+                reference_sequence
+            )
+
+        except ValueError as e:
+
+            error = str(e)
+
+        except Exception as e:
+
+            app.logger.exception("Sequence analysis failed")
+
+            error = (
+                "An unexpected error occurred during analysis. "
+                "Please check your FASTA sequences and try again."
+            )
+
+    return render_template(
+        "index.html",
+        result=result,
+        error=error
+    )
+
+
+# ==========================================
+# VERCEL ENTRY POINT
+# ==========================================
+
+if __name__ == "__main__":
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False
+    )

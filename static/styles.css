@@ -657,3 +657,29 @@ tbody tr:hover {
     }
 }
 ```
+/* Website banner */
+.website-banner {
+    width: 100%;
+    margin: 0 auto 25px;
+    overflow: hidden;
+    border-radius: 16px;
+
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        black 85%,
+        transparent 100%
+    );
+
+    mask-image: linear-gradient(
+        to bottom,
+        black 85%,
+        transparent 100%
+    );
+}
+
+.website-banner img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}

@@ -288,6 +288,9 @@
                             <th>Position</th>
                             <th>Type</th>
                             <th>Codon Change</th>
+                            <th>Reference Amino Acid</th>
+                            <th>Sample Amino Acid</th>
+                            <th>Protein Change</th>
                             <th>Effect</th>
                             <th>Status</th>
                         </tr>
@@ -311,6 +314,16 @@
                             <td>{{ mutation.type }}</td>
 
                             <td>{{ mutation.codon_change }}</td>
+
+                            <td>{{ mutation.ref_aa | default('-', true) }}</td>
+
+                            <td>{{ mutation.sample_aa | default('-', true) }}</td>
+
+                            <td>
+                                <strong>
+                                    {{ mutation.protein_change | default('-', true) }}
+                                </strong>
+                            </td>
 
                             <td>{{ mutation.effect }}</td>
 
@@ -370,6 +383,12 @@
             </p>
 
             <p>
+                Amino acid changes are predicted using the standard
+                genetic code and the reading frame beginning at the
+                first nucleotide of the supplied sequence.
+            </p>
+
+            <p>
                 Mutation detection does not establish pathogenicity
                 or clinical significance. Results depend on sequence
                 orientation, coding frame and alignment accuracy.
@@ -405,4 +424,3 @@
 
 </body>
 </html>
-

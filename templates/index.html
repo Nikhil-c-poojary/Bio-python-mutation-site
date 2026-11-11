@@ -18,69 +18,56 @@
 <main class="shell">
 
     <!-- WEBSITE BANNER -->
-
     <section class="website-banner">
         <img
             src="{{ url_for('static', filename='biotech-banner.png') }}"
-            alt="Gene Mutation Possibility Analyzer biotechnology banner"
+            alt="Gene Mutation Possibility Analyzer banner"
         >
     </section>
 
 
     <!-- HERO SECTION -->
-
     <section class="hero">
 
         <div>
-
             <p class="eyebrow">BIOPYTHON • GENOMIC ANALYSIS</p>
 
             <h1>Gene Mutation Possibility Analyzer</h1>
 
             <p class="lede">
-                Analyze DNA sequences, identify mutations,
-                compare codon changes and predict possible
-                amino acid effects using Biopython.
+                Analyze DNA sequences, identify mutations, compare
+                genetic variations and explore amino acid changes
+                using Python and Biopython.
             </p>
-
         </div>
 
         <div class="metrics">
-
             <span>POWERED BY</span>
-
             <strong>Flask + Biopython</strong>
-
-            <small>Sequence Analysis Platform</small>
-
+            <small>Bioinformatics Platform</small>
         </div>
 
     </section>
 
 
     <!-- INPUT WORKSPACE -->
-
     <section class="workspace">
 
-        <form method="POST" class="input-panel" id="sequenceForm">
+        <form method="POST" class="input-panel" id="analysisForm">
 
-            <h2>Sequence Input</h2>
-
-            <p class="small">
-                Enter reference and sample DNA sequences in FASTA format.
-            </p>
-
-            <label for="sample_sequence">
-                Sample FASTA Sequence
-            </label>
-
-            <textarea
-                id="sample_sequence"
-                name="sample_sequence"
-                placeholder=">Sample_Sequence&#10;ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
-                required>{{ request.form.get('sample_sequence', '') }}</textarea>
+            <div class="demo-notice">
+                <span class="demo-dot"></span>
+                <div>
+                    <strong>DEMO DATA LOADED</strong>
+                    <p>
+                        Example FASTA sequences are provided.
+                        You can edit or replace them with your own data.
+                    </p>
+                </div>
+            </div>
 
 
+            <!-- REFERENCE FASTA -->
             <label for="reference_sequence">
                 Reference FASTA Sequence
             </label>
@@ -88,21 +75,37 @@
             <textarea
                 id="reference_sequence"
                 name="reference_sequence"
-                placeholder=">Reference_Sequence&#10;ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
-                required>{{ request.form.get('reference_sequence', '') }}</textarea>
+                placeholder="Enter reference FASTA sequence..."
+                required
+            >{{ request.form.get('reference_sequence', '>Reference_Demo\nATGGAACTT') }}</textarea>
 
 
+            <!-- SAMPLE FASTA -->
+            <label for="sample_sequence">
+                Sample FASTA Sequence
+            </label>
+
+            <textarea
+                id="sample_sequence"
+                name="sample_sequence"
+                placeholder="Enter sample FASTA sequence..."
+                required
+            >{{ request.form.get('sample_sequence', '>Sample_Demo\nATGGAATTT') }}</textarea>
+
+
+            <!-- BUTTONS -->
             <div class="controls">
 
-                <button type="submit">
-                    Analyze DNA Sequence →
+                <button type="submit" class="analyze-button">
+                    Analyze DNA Sequence
                 </button>
 
                 <button
                     type="button"
                     class="secondary-button"
-                    onclick="clearSequences()">
-                    Clear
+                    id="clearButton"
+                >
+                    Clear Sequences
                 </button>
 
             </div>
@@ -111,12 +114,9 @@
 
 
         <!-- FEATURES PANEL -->
-
         <aside class="note-panel">
 
-            <p class="eyebrow">ANALYSIS MODULES</p>
-
-            <h2>Platform Features</h2>
+            <h2>Analysis Modules</h2>
 
             <div class="feature-item">
                 <span>01</span>
@@ -130,27 +130,27 @@
 
             <div class="feature-item">
                 <span>03</span>
-                <p>Point Mutation Detection</p>
+                <p>DNA Mutation Detection</p>
             </div>
 
             <div class="feature-item">
                 <span>04</span>
-                <p>Codon and Amino Acid Analysis</p>
+                <p>Codon Analysis</p>
             </div>
 
             <div class="feature-item">
                 <span>05</span>
-                <p>GC Content Calculation</p>
+                <p>Amino Acid Analysis</p>
             </div>
 
             <div class="feature-item">
                 <span>06</span>
-                <p>Mutation Distribution Mapping</p>
+                <p>GC Content Calculation</p>
             </div>
 
             <p class="small">
-                Designed for educational bioinformatics
-                and DNA sequence analysis.
+                An educational bioinformatics project developed
+                using Python, Flask and Biopython.
             </p>
 
         </aside>
@@ -159,49 +159,32 @@
 
 
     <!-- ERROR MESSAGE -->
-
     {% if error %}
 
     <section class="alert">
-
         <h3>Analysis Error</h3>
-
         <p>{{ error }}</p>
-
     </section>
 
     {% endif %}
 
 
     <!-- ANALYSIS RESULTS -->
-
     {% if result %}
 
     {% for record in result %}
 
     <section class="results">
 
-        <!-- RESULT HEADER -->
-
         <div class="result-head">
 
             <div>
-
-                <p class="eyebrow">SEQUENCE ANALYSIS REPORT</p>
+                <p class="eyebrow">ANALYSIS REPORT</p>
 
                 <h2>{{ record.id }}</h2>
 
                 <p>{{ record.description }}</p>
-
-                <p class="small">
-                    Reference: {{ record.reference_id }}
-                    | Reference Length: {{ record.reference_length }} bp
-                </p>
-
             </div>
-
-
-            <!-- STATISTICS -->
 
             <div class="stat-grid">
 
@@ -216,7 +199,7 @@
                 </div>
 
                 <div>
-                    <span>Detected Differences</span>
+                    <span>Mutations</span>
                     <strong>{{ record.mutation_count }}</strong>
                 </div>
 
@@ -225,8 +208,30 @@
         </div>
 
 
-        <!-- DNA SEQUENCE -->
+        <!-- REFERENCE INFORMATION -->
+        <section class="result-section">
 
+            <h2>Reference Information</h2>
+
+            <p class="result-description">
+                Reference ID:
+                <strong>{{ record.reference_id }}</strong>
+            </p>
+
+            <p class="result-description">
+                Reference Length:
+                <strong>{{ record.reference_length }} bp</strong>
+            </p>
+
+            <p class="result-description">
+                Alignment Score:
+                <strong>{{ record.alignment_score }}</strong>
+            </p>
+
+        </section>
+
+
+        <!-- SAMPLE SEQUENCE -->
         <section class="sequence-panel">
 
             <h2>Sample DNA Sequence</h2>
@@ -238,37 +243,24 @@
         </section>
 
 
-        <!-- SEQUENCE ALIGNMENT -->
-
+        <!-- ALIGNMENT -->
         <section class="alignment-panel">
 
             <h2>Sequence Alignment</h2>
-
-            <p class="small">
-                Identical bases are represented by vertical bars.
-            </p>
 
             <div class="alignment-box">
                 <pre>{{ record.alignment }}</pre>
             </div>
 
-            <p class="small">
-                Alignment Score: {{ record.alignment_score }}
-            </p>
-
         </section>
 
 
         <!-- MUTATION DISTRIBUTION -->
-
         <section class="graph-panel">
 
             <h2>Mutation Distribution</h2>
 
-            <p class="small">
-                Distribution of detected sequence differences
-                across the reference sequence.
-            </p>
+            {% if record.mutation_count > 0 %}
 
             <div class="graph-bar">
 
@@ -277,45 +269,46 @@
                 <div
                     class="mutation-marker"
                     style="left: {{ mutation.position_percent }}%;"
-                    title="{{ mutation.change }} at position {{ mutation.position }}">
-                </div>
+                    title="Position {{ mutation.position }}: {{ mutation.change }}"
+                ></div>
 
                 {% endfor %}
 
             </div>
 
             <div class="graph-labels">
-
                 <span>Start</span>
-
-                <span>Reference Sequence</span>
-
+                <span>Sequence Position</span>
                 <span>End</span>
-
             </div>
+
+            {% else %}
+
+            <div class="success-message">
+                <h3>No mutations detected</h3>
+                <p>
+                    The analyzed sequences show no detected
+                    differences in the alignment.
+                </p>
+            </div>
+
+            {% endif %}
 
         </section>
 
 
         <!-- MUTATION TABLE -->
-
         <section class="table-section">
 
-            <h2>Detected Mutations</h2>
+            <h2>Mutation Analysis Report</h2>
 
-            <p class="small">
-                Sequence differences identified through
-                reference and sample alignment.
-            </p>
-
-            {% if record.top_mutations %}
+            {% if record.mutation_count > 0 %}
 
             <div class="table-wrap">
 
                 <table>
 
                     <thead>
-
                         <tr>
                             <th>No.</th>
                             <th>Mutation</th>
@@ -326,9 +319,7 @@
                             <th>Sample Amino Acid</th>
                             <th>Protein Change</th>
                             <th>Effect</th>
-                            <th>Status</th>
                         </tr>
-
                     </thead>
 
                     <tbody>
@@ -339,9 +330,7 @@
 
                             <td>{{ loop.index }}</td>
 
-                            <td>
-                                <strong>{{ mutation.change }}</strong>
-                            </td>
+                            <td>{{ mutation.change }}</td>
 
                             <td>{{ mutation.position }}</td>
 
@@ -353,15 +342,11 @@
 
                             <td>{{ mutation.sample_aa }}</td>
 
-                            <td>
-                                <strong>{{ mutation.protein_change }}</strong>
-                            </td>
-
-                            <td>{{ mutation.effect }}</td>
+                            <td>{{ mutation.protein_change }}</td>
 
                             <td>
-                                <span class="badge detected">
-                                    {{ mutation.label }}
+                                <span class="badge">
+                                    {{ mutation.effect }}
                                 </span>
                             </td>
 
@@ -378,8 +363,8 @@
             {% if record.mutation_count > 25 %}
 
             <p class="small">
-                Showing the first 25 detected differences
-                out of {{ record.mutation_count }}.
+                Showing the first 25 mutations.
+                Total detected: {{ record.mutation_count }}.
             </p>
 
             {% endif %}
@@ -387,14 +372,8 @@
             {% else %}
 
             <div class="success-message">
-
-                <h3>No Sequence Differences Detected</h3>
-
-                <p>
-                    The aligned reference and sample sequences
-                    show no differences.
-                </p>
-
+                <h3>Sequence Match</h3>
+                <p>No mutations were detected between the sequences.</p>
             </div>
 
             {% endif %}
@@ -403,61 +382,85 @@
 
 
         <!-- AMINO ACID ANALYSIS -->
-
-        <section class="amino-acid-panel">
+        <section class="amino-panel">
 
             <h2>Amino Acid Analysis</h2>
 
-            <p class="small">
-                Predicted protein-level effects of detected DNA mutations.
+            {% if record.mutation_count > 0 %}
+
+            <p>
+                The following table displays codon and amino acid
+                changes associated with detected mutations.
             </p>
 
-            {% for mutation in record.top_mutations %}
+            <div class="table-wrap">
 
-            <div class="feature-item">
+                <table>
 
-                <span>{{ loop.index }}</span>
+                    <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>Codon Change</th>
+                            <th>Reference Amino Acid</th>
+                            <th>Sample Amino Acid</th>
+                            <th>Protein Change</th>
+                            <th>Effect</th>
+                        </tr>
+                    </thead>
 
-                <p>
-                    <strong>{{ mutation.codon_change }}</strong>
-                    |
-                    {{ mutation.ref_aa }}
-                    →
-                    {{ mutation.sample_aa }}
-                    |
-                    {{ mutation.protein_change }}
-                </p>
+                    <tbody>
+
+                        {% for mutation in record.top_mutations %}
+
+                        <tr>
+
+                            <td>{{ mutation.position }}</td>
+
+                            <td>{{ mutation.codon_change }}</td>
+
+                            <td>{{ mutation.ref_aa }}</td>
+
+                            <td>{{ mutation.sample_aa }}</td>
+
+                            <td>{{ mutation.protein_change }}</td>
+
+                            <td>{{ mutation.effect }}</td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
 
             </div>
 
-            {% endfor %}
+            {% else %}
+
+            <p>No amino acid changes were identified.</p>
+
+            {% endif %}
 
         </section>
 
 
         <!-- SCIENTIFIC NOTE -->
-
         <section class="scientific-note">
 
             <h3>Scientific Interpretation</h3>
 
             <p>
-                Detected sequence differences represent variations
-                between the supplied reference and sample DNA sequences.
-                Synonymous and nonsynonymous classifications are based
-                on codon translation.
+                Amino acid analysis assumes that the supplied
+                DNA sequence represents a coding sequence beginning
+                at the first nucleotide. Insertions and deletions
+                require additional reading-frame analysis.
             </p>
 
             <p>
-                Amino acid predictions use the standard genetic code
-                and assume that the supplied sequence begins at the
-                first nucleotide of a coding region.
-            </p>
-
-            <p>
-                Mutation detection does not establish pathogenicity
-                or clinical significance. Results depend on sequence
-                orientation, coding frame and alignment accuracy.
+                Mutation effects are computational predictions
+                based on sequence comparison. They do not establish
+                clinical pathogenicity or disease association.
             </p>
 
         </section>
@@ -470,20 +473,16 @@
 
 
     <!-- FOOTER -->
-
     <footer class="footer">
 
-        <p>
-            Gene Mutation Possibility Analyzer
-        </p>
+        <h3>Gene Mutation Possibility Analyzer</h3>
 
-        <span>
-            Developed using Python, Flask and Biopython
-        </span>
+        <p>Developed using Python, Flask and Biopython</p>
+
+        <span>Educational Bioinformatics Project by NIKHIL.C</span>
 
         <p class="small">
-            Educational Bioinformatics Project by
-            NIKHIL.C [Final year B.Sc Alva's]
+            Final Year B.Sc. Biotechnology
         </p>
 
     </footer>
@@ -491,30 +490,21 @@
 </main>
 
 
-<!-- CLEAR BUTTON SCRIPT -->
-
+<!-- CLEAR BUTTON FUNCTION -->
 <script>
 
-function clearSequences() {
-
-    document.getElementById("sample_sequence").value = "";
+document.getElementById("clearButton").addEventListener("click", function () {
 
     document.getElementById("reference_sequence").value = "";
 
-    // Remove previous results and error messages
+    document.getElementById("sample_sequence").value = "";
 
-    const results = document.querySelectorAll(".results");
-    const alerts = document.querySelectorAll(".alert");
-
-    results.forEach(function(item) {
-        item.remove();
+    // Remove previous results and error messages.
+    document.querySelectorAll(".results, .alert").forEach(function (element) {
+        element.remove();
     });
 
-    alerts.forEach(function(item) {
-        item.remove();
-    });
-
-}
+});
 
 </script>
 

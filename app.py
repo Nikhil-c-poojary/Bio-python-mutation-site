@@ -1,19 +1,70 @@
 from flask import Flask, render_template, request
 from Bio import SeqIO, pairwise2
+from Bio.Seq import Seq
 from io import StringIO
 
 app = Flask(__name__)
 
+VALID_BASES = set("ATGCN")
+
 
 def read_fasta(content):
-    handle = StringIO(content)
 
-    records = list(SeqIO.parse(handle, "fasta"))
+    if not content or not content.strip():
+        raise ValueError("Please enter a FASTA sequence.")
+
+    records = list(SeqIO.parse(StringIO(content), "fasta"))
 
     if not records:
-        raise ValueError("No valid FASTA sequence found")
+        raise ValueError("Invalid FASTA format.")
 
-    return records[0]
+    record = records[0]
+
+    sequence = str(record.seq).upper()
+
+    if not sequence:
+        raise ValueError("FASTA sequence is empty.")
+
+    invalid = set(sequence) - VALID_BASES
+
+    if invalid:
+        raise ValueError(
+            f"Invalid DNA characters found: {', '.join(sorted(invalid))}"
+        )
+
+    return record
+
+
+def classify_effect(reference_seq, sample_seq, ref_pos, sample_pos):
+
+    ref_start = ((ref_pos - 1) // 3) * 3
+    sample_start = ((sample_pos - 1) // 3) * 3
+
+    ref_codon = reference_seq[ref_start:ref_start + 3]
+    sample_codon = sample_seq[sample_start:sample_start + 3]
+
+    if len(ref_codon) != 3 or len(sample_codon) != 3:
+        return "Unknown (incomplete codon)", "-", "-"
+
+    if "N" in ref_codon or "N" in sample_codon:
+        return "Unknown (ambiguous base)", ref_codon, sample_codon
+
+    ref_aa = str(Seq(ref_codon).translate())
+    sample_aa = str(Seq(sample_codon).translate())
+
+    if ref_aa == sample_aa:
+        effect = "Synonymous"
+
+    elif sample_aa == "*":
+        effect = "Stop gained"
+
+    elif ref_aa == "*":
+        effect = "Stop lost"
+
+    else:
+        effect = "Nonsynonymous"
+
+    return effect, ref_codon, sample_codon
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -26,13 +77,8 @@ def index():
 
         try:
 
-            sample_text = request.form.get("sample_sequence")
-            reference_text = request.form.get("reference_sequence")
-
-            if not sample_text or not reference_text:
-                raise ValueError(
-                    "Both sample and reference FASTA sequences are required"
-                )
+            sample_text = request.form.get("sample_sequence", "")
+            reference_text = request.form.get("reference_sequence", "")
 
             sample_record = read_fasta(sample_text)
             reference_record = read_fasta(reference_text)
@@ -40,10 +86,21 @@ def index():
             sample_seq = str(sample_record.seq).upper()
             reference_seq = str(reference_record.seq).upper()
 
-            alignment = pairwise2.align.globalxx(
+            # Perform sequence alignment
+
+            alignments = pairwise2.align.globalms(
                 reference_seq,
-                sample_seq
-            )[0]
+                sample_seq,
+                2,
+                -1,
+                -5,
+                -0.5
+            )
+
+            if not alignments:
+                raise ValueError("Unable to align the sequences.")
+
+            alignment = alignments[0]
 
             aligned_ref = alignment.seqA
             aligned_sample = alignment.seqB
@@ -54,7 +111,6 @@ def index():
 
                 if a == b:
                     alignment_visual.append("|")
-
                 else:
                     alignment_visual.append(" ")
 
@@ -68,31 +124,86 @@ def index():
 
             mutations = []
 
-            pos = 0
+            ref_pos = 0
+            sample_pos = 0
 
-            for i in range(len(aligned_ref)):
-
-                ref_base = aligned_ref[i]
-                sample_base = aligned_sample[i]
+            for ref_base, sample_base in zip(
+                aligned_ref, aligned_sample
+            ):
 
                 if ref_base != "-":
-                    pos += 1
+                    ref_pos += 1
 
-                if ref_base != sample_base:
+                if sample_base != "-":
+                    sample_pos += 1
 
-                    mutation = {
-                        "change": f"{ref_base}→{sample_base}",
-                        "position": pos,
-                        "probability": 95,
-                        "label": "HIGH",
-                        "effect": "Substitution",
-                        "context": "Actual mismatch detected",
-                        "position_percent": (
-                            pos / max(len(reference_seq), 1)
-                        ) * 100,
-                    }
+                if ref_base == sample_base:
+                    continue
 
-                    mutations.append(mutation)
+                if ref_base == "-":
+
+                    mutation_type = "Insertion"
+                    change = f"-→{sample_base}"
+                    effect = "Insertion"
+                    codon_change = "-"
+
+                    position = ref_pos + 1
+
+                elif sample_base == "-":
+
+                    mutation_type = "Deletion"
+                    change = f"{ref_base}→-"
+                    effect = "Deletion"
+                    codon_change = "-"
+
+                    position = ref_pos
+
+                else:
+
+                    mutation_type = "Substitution"
+
+                    change = f"{ref_base}→{sample_base}"
+
+                    position = ref_pos
+
+                    effect, ref_codon, sample_codon = (
+                        classify_effect(
+                            reference_seq,
+                            sample_seq,
+                            ref_pos,
+                            sample_pos
+                        )
+                    )
+
+                    codon_change = (
+                        f"{ref_codon}→{sample_codon}"
+                    )
+
+                mutations.append({
+
+                    "change": change,
+
+                    "position": position,
+
+                    "label": "DETECTED",
+
+                    "probability": "Not estimated",
+
+                    "effect": effect,
+
+                    "type": mutation_type,
+
+                    "codon_change": codon_change,
+
+                    "context": "Observed sequence difference",
+
+                    "position_percent": (
+                        position / max(len(reference_seq), 1)
+                    ) * 100
+
+                })
+
+            # GC percentage
 
             gc_count = (
                 sample_seq.count("G")
@@ -104,28 +215,47 @@ def index():
                 2
             )
 
-            result = [
-                {
-                    "id": sample_record.id,
-                    "description": sample_record.description,
-                    "length": len(sample_seq),
-                    "gc": gc_percent,
-                    "mutation_count": len(mutations),
-                    "sequence": sample_seq,
-                    "alignment": alignment_string,
-                    "top_mutations": mutations[:25],
-                }
-            ]
+            result = [{
+
+                "id": sample_record.id,
+
+                "description": sample_record.description,
+
+                "length": len(sample_seq),
+
+                "gc": gc_percent,
+
+                "mutation_count": len(mutations),
+
+                "sequence": sample_seq,
+
+                "alignment": alignment_string,
+
+                "alignment_score": alignment.score,
+
+                "top_mutations": mutations[:25],
+
+                "reference_id": reference_record.id,
+
+                "reference_length": len(reference_seq)
+
+            }]
+
+        except ValueError as e:
+
+            error = str(e)
 
         except Exception as e:
-            error = str(e)
+
+            error = f"Analysis error: {str(e)}"
 
     return render_template(
         "index.html",
         result=result,
-        error=error,
+        error=error
     )
 
 
 if __name__ == "__main__":
-    app.run(debug=True) 
+
+    app.run(debug=True)

@@ -1,3 +1,5 @@
+```txt
 Flask==3.0.3
 biopython==1.84
-gunicorn
+gunicorn==22.0.0
+```

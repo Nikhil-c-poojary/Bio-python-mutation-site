@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -9,6 +10,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='styles.css') }}">
+
 </head>
 
 <body>
@@ -16,38 +18,46 @@
 <main class="shell">
 
     <!-- HERO SECTION -->
+
     <section class="hero">
 
         <div>
+
             <p class="eyebrow">BIOPYTHON • GENOMIC ANALYSIS</p>
 
             <h1>Gene Mutation Possibility Analyzer</h1>
 
             <p class="lede">
-                Analyze DNA sequences, identify point mutations,
-                compare codon changes and explore possible
+                Analyze DNA sequences, identify mutations,
+                compare codon changes and predict possible
                 amino acid effects using Biopython.
             </p>
+
         </div>
 
         <div class="metrics">
+
             <span>POWERED BY</span>
+
             <strong>Flask + Biopython</strong>
+
             <small>Sequence Analysis Platform</small>
+
         </div>
 
     </section>
 
 
     <!-- INPUT WORKSPACE -->
+
     <section class="workspace">
 
-        <form method="POST" class="input-panel">
+        <form method="POST" class="input-panel" id="sequenceForm">
 
             <h2>Sequence Input</h2>
 
             <p class="small">
-                Enter both reference and sample DNA sequences in FASTA format.
+                Enter reference and sample DNA sequences in FASTA format.
             </p>
 
             <label for="sample_sequence">
@@ -78,9 +88,14 @@
                     Analyze DNA Sequence →
                 </button>
 
-                <button type="button" class="secondary-button" onclick="clearSequences()">
-    Clear
-</button>
+                <button
+                    type="button"
+                    class="secondary-button"
+                    onclick="clearSequences()">
+
+                    Clear
+
+                </button>
 
             </div>
 
@@ -88,6 +103,7 @@
 
 
         <!-- FEATURES PANEL -->
+
         <aside class="note-panel">
 
             <p class="eyebrow">ANALYSIS MODULES</p>
@@ -135,6 +151,7 @@
 
 
     <!-- ERROR MESSAGE -->
+
     {% if error %}
 
     <section class="alert">
@@ -149,6 +166,7 @@
 
 
     <!-- RESULTS -->
+
     {% if result %}
 
     {% for record in result %}
@@ -156,6 +174,7 @@
     <section class="results">
 
         <!-- RESULT HEADER -->
+
         <div class="result-head">
 
             <div>
@@ -175,6 +194,7 @@
 
 
             <!-- STATISTICS -->
+
             <div class="stat-grid">
 
                 <div>
@@ -198,6 +218,7 @@
 
 
         <!-- DNA SEQUENCE -->
+
         <section class="sequence-panel">
 
             <h2>Sample DNA Sequence</h2>
@@ -210,6 +231,7 @@
 
 
         <!-- ALIGNMENT -->
+
         <section class="alignment-panel">
 
             <h2>Sequence Alignment</h2>
@@ -232,6 +254,7 @@
 
 
         <!-- MUTATION DISTRIBUTION -->
+
         <section class="graph-panel">
 
             <h2>Mutation Distribution</h2>
@@ -256,15 +279,20 @@
             </div>
 
             <div class="graph-labels">
+
                 <span>Start</span>
+
                 <span>Reference Sequence</span>
+
                 <span>End</span>
+
             </div>
 
         </section>
 
 
         <!-- MUTATION TABLE -->
+
         <section class="table-section">
 
             <h2>Detected Mutations</h2>
@@ -283,6 +311,7 @@
                     <thead>
 
                         <tr>
+
                             <th>No.</th>
                             <th>Mutation</th>
                             <th>Position</th>
@@ -293,6 +322,7 @@
                             <th>Protein Change</th>
                             <th>Effect</th>
                             <th>Status</th>
+
                         </tr>
 
                     </thead>
@@ -315,13 +345,13 @@
 
                             <td>{{ mutation.codon_change }}</td>
 
-                            <td>{{ mutation.ref_aa | default('-', true) }}</td>
+                            <td>{{ mutation.ref_aa }}</td>
 
-                            <td>{{ mutation.sample_aa | default('-', true) }}</td>
+                            <td>{{ mutation.sample_aa }}</td>
 
                             <td>
                                 <strong>
-                                    {{ mutation.protein_change | default('-', true) }}
+                                    {{ mutation.protein_change }}
                                 </strong>
                             </td>
 
@@ -370,7 +400,49 @@
         </section>
 
 
+        <!-- AMINO ACID ANALYSIS -->
+
+        <section class="amino-acid-panel">
+
+            <h2>Amino Acid Analysis</h2>
+
+            <p class="small">
+                Predicted protein-level effects of detected DNA mutations.
+            </p>
+
+            {% for mutation in record.top_mutations %}
+
+            <div class="feature-item">
+
+                <span>{{ loop.index }}</span>
+
+                <p>
+
+                    <strong>{{ mutation.codon_change }}</strong>
+
+                    |
+
+                    {{ mutation.ref_aa }}
+
+                    →
+
+                    {{ mutation.sample_aa }}
+
+                    |
+
+                    {{ mutation.protein_change }}
+
+                </p>
+
+            </div>
+
+            {% endfor %}
+
+        </section>
+
+
         <!-- SCIENTIFIC NOTE -->
+
         <section class="scientific-note">
 
             <h3>Scientific Interpretation</h3>
@@ -383,9 +455,9 @@
             </p>
 
             <p>
-                Amino acid changes are predicted using the standard
-                genetic code and the reading frame beginning at the
-                first nucleotide of the supplied sequence.
+                Amino acid predictions use the standard genetic code
+                and assume that the supplied sequence begins at the
+                first nucleotide of a coding region.
             </p>
 
             <p>
@@ -404,6 +476,7 @@
 
 
     <!-- FOOTER -->
+
     <footer class="footer">
 
         <p>
@@ -415,18 +488,40 @@
         </span>
 
         <p class="small">
-            Educational Bioinformatics Project by NIKHIL.C [Final year B.Sc Alva's]
+            Educational Bioinformatics Project by
+            NIKHIL.C [Final year B.Sc Alva's]
         </p>
 
     </footer>
 
 </main>
+
+
+<!-- CLEAR BUTTON SCRIPT -->
+
 <script>
+
 function clearSequences() {
+
     document.getElementById("sample_sequence").value = "";
+
     document.getElementById("reference_sequence").value = "";
+
+    // Remove previous results and errors
+    const results = document.querySelector(".results");
+    const alert = document.querySelector(".alert");
+
+    if (results) {
+        results.remove();
+    }
+
+    if (alert) {
+        alert.remove();
+    }
+
 }
+
 </script>
-    
+
 </body>
 </html>

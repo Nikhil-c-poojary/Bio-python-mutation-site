@@ -2,26 +2,31 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Gene Mutation Possibility Analyzer - DNA sequence alignment, mutation detection and amino acid analysis using Biopython.">
 
     <title>Gene Mutation Possibility Analyzer</title>
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='styles.css') }}">
-
 </head>
 
 <body>
 
 <main class="shell">
-<section class="website-banner">
-    <img
-        src="{{ url_for('static', filename='biotech-banner.png') }}"
-        alt="Gene Mutation Possibility Analyzer banner"
-    >
-</section>
+
+    <!-- WEBSITE BANNER -->
+
+    <section class="website-banner">
+        <img
+            src="{{ url_for('static', filename='biotech-banner.png') }}"
+            alt="Gene Mutation Possibility Analyzer biotechnology banner"
+        >
+    </section>
+
+
     <!-- HERO SECTION -->
 
     <section class="hero">
@@ -97,9 +102,7 @@
                     type="button"
                     class="secondary-button"
                     onclick="clearSequences()">
-
                     Clear
-
                 </button>
 
             </div>
@@ -170,7 +173,7 @@
     {% endif %}
 
 
-    <!-- RESULTS -->
+    <!-- ANALYSIS RESULTS -->
 
     {% if result %}
 
@@ -235,7 +238,7 @@
         </section>
 
 
-        <!-- ALIGNMENT -->
+        <!-- SEQUENCE ALIGNMENT -->
 
         <section class="alignment-panel">
 
@@ -246,9 +249,7 @@
             </p>
 
             <div class="alignment-box">
-
                 <pre>{{ record.alignment }}</pre>
-
             </div>
 
             <p class="small">
@@ -316,7 +317,6 @@
                     <thead>
 
                         <tr>
-
                             <th>No.</th>
                             <th>Mutation</th>
                             <th>Position</th>
@@ -327,7 +327,6 @@
                             <th>Protein Change</th>
                             <th>Effect</th>
                             <th>Status</th>
-
                         </tr>
 
                     </thead>
@@ -355,9 +354,7 @@
                             <td>{{ mutation.sample_aa }}</td>
 
                             <td>
-                                <strong>
-                                    {{ mutation.protein_change }}
-                                </strong>
+                                <strong>{{ mutation.protein_change }}</strong>
                             </td>
 
                             <td>{{ mutation.effect }}</td>
@@ -422,21 +419,13 @@
                 <span>{{ loop.index }}</span>
 
                 <p>
-
                     <strong>{{ mutation.codon_change }}</strong>
-
                     |
-
                     {{ mutation.ref_aa }}
-
                     →
-
                     {{ mutation.sample_aa }}
-
                     |
-
                     {{ mutation.protein_change }}
-
                 </p>
 
             </div>
@@ -512,17 +501,18 @@ function clearSequences() {
 
     document.getElementById("reference_sequence").value = "";
 
-    // Remove previous results and errors
-    const results = document.querySelector(".results");
-    const alert = document.querySelector(".alert");
+    // Remove previous results and error messages
 
-    if (results) {
-        results.remove();
-    }
+    const results = document.querySelectorAll(".results");
+    const alerts = document.querySelectorAll(".alert");
 
-    if (alert) {
-        alert.remove();
-    }
+    results.forEach(function(item) {
+        item.remove();
+    });
+
+    alerts.forEach(function(item) {
+        item.remove();
+    });
 
 }
 

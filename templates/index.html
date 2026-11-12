@@ -1,4 +1,4 @@
-```html
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -10,7 +10,6 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='styles.css') }}">
-
 </head>
 
 <body>
@@ -19,11 +18,11 @@
 
     <!-- HEADER -->
     <section class="hero">
-
         <div>
             <span class="eyebrow">BIOINFORMATICS PROJECT</span>
 
-            <h1>Gene Mutation<br>
+            <h1>
+                Gene Mutation<br>
                 <span>Possibility Analyzer</span>
             </h1>
 
@@ -33,18 +32,14 @@
                 on amino acid sequences.
             </p>
         </div>
-
     </section>
 
 
     <!-- BANNER -->
     <section class="website-banner">
-
         <img
             src="{{ url_for('static', filename='biotech-banner.png') }}"
-            alt="Gene Mutation Possibility Analyzer"
-        >
-
+            alt="Gene Mutation Possibility Analyzer">
     </section>
 
 
@@ -52,7 +47,6 @@
     <section class="panel input-panel">
 
         <div class="section-heading">
-
             <div>
                 <span class="eyebrow">SEQUENCE ANALYSIS</span>
                 <h2>DNA Sequence Input</h2>
@@ -62,9 +56,7 @@
                     in FASTA format.
                 </p>
             </div>
-
         </div>
-
 
         <div class="demo-notice">
             <strong>DEMO DATA LOADED</strong>
@@ -73,7 +65,6 @@
                 You can replace them with your own sequences.
             </span>
         </div>
-
 
         <form method="POST" action="/" id="analysisForm">
 
@@ -91,6 +82,7 @@
                         name="reference_sequence"
                         placeholder="Enter reference FASTA sequence..."
                         required
+                        spellcheck="false"
                     >{{ request.form.get('reference_sequence', '>Reference_Demo\nATGGAACTT') }}</textarea>
 
                 </div>
@@ -108,6 +100,7 @@
                         name="sample_sequence"
                         placeholder="Enter sample FASTA sequence..."
                         required
+                        spellcheck="false"
                     >{{ request.form.get('sample_sequence', '>Sample_Demo\nATGGAATTT') }}</textarea>
 
                 </div>
@@ -121,7 +114,9 @@
                     Analyze DNA Sequences →
                 </button>
 
-                <button type="button" class="secondary-btn" id="clearBtn">
+                <button type="button"
+                        class="secondary-btn"
+                        id="clearBtn">
                     Clear Sequences
                 </button>
 
@@ -194,10 +189,7 @@
         </div>
 
 
-        <!-- ================================= -->
         <!-- 1. DNA SEQUENCE COMPARISON -->
-        <!-- ================================= -->
-
         <section class="panel visualization-panel">
 
             <div class="section-heading">
@@ -236,6 +228,7 @@
 
             <div class="sequence-comparison">
 
+                <!-- REFERENCE ROW -->
                 <div class="sequence-row">
 
                     <div class="sequence-label">
@@ -246,15 +239,7 @@
 
                         {% for base in record.aligned_bases %}
 
-                        <span class="base
-                            {% if base.reference == '-' %}
-                                gap-base
-                            {% elif base.match %}
-                                match-base
-                            {% else %}
-                                mutation-base
-                            {% endif %}
-                        ">
+                        <span class="base {% if base.reference == '-' or base.sample == '-' %}gap-base{% elif base.match %}match-base{% else %}mutation-base{% endif %}">
                             {{ base.reference }}
                         </span>
 
@@ -265,6 +250,7 @@
                 </div>
 
 
+                <!-- SAMPLE ROW -->
                 <div class="sequence-row">
 
                     <div class="sequence-label">
@@ -275,15 +261,7 @@
 
                         {% for base in record.aligned_bases %}
 
-                        <span class="base
-                            {% if base.sample == '-' %}
-                                gap-base
-                            {% elif base.match %}
-                                match-base
-                            {% else %}
-                                mutation-base
-                            {% endif %}
-                        ">
+                        <span class="base {% if base.reference == '-' or base.sample == '-' %}gap-base{% elif base.match %}match-base{% else %}mutation-base{% endif %}">
                             {{ base.sample }}
                         </span>
 
@@ -315,10 +293,7 @@
         </section>
 
 
-        <!-- ================================= -->
-        <!-- 2. GC CONTENT DOUGHNUT CHART -->
-        <!-- ================================= -->
-
+        <!-- 2. GC CONTENT CHART -->
         <section class="panel visualization-panel">
 
             <div class="section-heading">
@@ -359,6 +334,7 @@
 
                         <div>
                             <strong>GC Content</strong>
+
                             <p>
                                 {{ record.gc }}%
                                 ({{ record.gc_count }} bases)
@@ -374,6 +350,7 @@
 
                         <div>
                             <strong>AT Content</strong>
+
                             <p>
                                 {{ record.at }}%
                                 ({{ record.at_count }} bases)
@@ -389,6 +366,7 @@
 
                         <div>
                             <strong>Unknown Bases</strong>
+
                             <p>
                                 {{ record.n_count }} bases (N)
                             </p>
@@ -409,10 +387,7 @@
         </section>
 
 
-        <!-- ================================= -->
         <!-- 3. CODON TO AMINO ACID -->
-        <!-- ================================= -->
-
         <section class="panel visualization-panel">
 
             <div class="section-heading">
@@ -468,7 +443,7 @@
                             <span>SAMPLE CODON</span>
 
                             <strong>
-                                {{ mutation.codon_change.split(' → ')[1] }}
+                                {{ mutation.codon_change.split(' → ')[1] if ' → ' in mutation.codon_change else 'N/A' }}
                             </strong>
 
                             <small>{{ mutation.sample_aa }}</small>
@@ -501,12 +476,14 @@
             {% else %}
 
             <div class="no-data">
+
                 <h3>No substitution detected</h3>
 
                 <p>
                     Codon and amino acid comparison will appear
                     when a nucleotide substitution is identified.
                 </p>
+
             </div>
 
             {% endif %}
@@ -514,10 +491,7 @@
         </section>
 
 
-        <!-- ================================= -->
         <!-- MUTATION SUMMARY -->
-        <!-- ================================= -->
-
         <section class="panel visualization-panel">
 
             <div class="section-heading">
@@ -556,7 +530,6 @@
                 <table>
 
                     <thead>
-
                         <tr>
                             <th>Position</th>
                             <th>Change</th>
@@ -565,7 +538,6 @@
                             <th>Protein Change</th>
                             <th>Effect</th>
                         </tr>
-
                     </thead>
 
 
@@ -619,10 +591,7 @@
         </section>
 
 
-        <!-- ================================= -->
         <!-- ALIGNMENT DETAILS -->
-        <!-- ================================= -->
-
         <section class="panel visualization-panel">
 
             <div class="section-heading">
@@ -638,10 +607,7 @@
         </section>
 
 
-        <!-- ================================= -->
         <!-- SCIENTIFIC NOTE -->
-        <!-- ================================= -->
-
         <section class="scientific-note">
 
             <h3>Scientific Interpretation</h3>
@@ -661,7 +627,6 @@
             </p>
 
         </section>
-
 
     </section>
 
@@ -778,4 +743,3 @@
 
 </body>
 </html>
-```

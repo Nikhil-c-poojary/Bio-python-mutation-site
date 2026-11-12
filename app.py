@@ -1,4 +1,4 @@
-```python
+
 from flask import Flask, render_template, request
 from Bio import SeqIO, pairwise2
 from Bio.Seq import Seq
@@ -6,7 +6,11 @@ from io import StringIO
 from collections import Counter
 import warnings
 
-warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore")
+
+# -----------------------------------------
+# FLASK APPLICATION
+# -----------------------------------------
 
 app = Flask(__name__)
 
@@ -51,7 +55,6 @@ def parse_fasta(sequence_text):
 
     sequence_text = sequence_text.strip()
 
-    # Allow users to enter a raw DNA sequence
     if not sequence_text.startswith(">"):
         sequence_text = ">Sequence\n" + sequence_text
 
@@ -65,7 +68,8 @@ def parse_fasta(sequence_text):
 
         record = records[0]
 
-        sequence = str(record.seq).upper().replace(" ", "").replace("\n", "")
+        sequence = str(record.seq).upper()
+        sequence = "".join(sequence.split())
 
         if not sequence:
             raise ValueError("The DNA sequence is empty.")
@@ -105,11 +109,11 @@ def calculate_sequence_statistics(sequence):
     at_count = counts["A"] + counts["T"]
 
     gc_content = (
-        (gc_count / length) * 100 if length else 0
+        gc_count / length * 100 if length else 0
     )
 
     at_content = (
-        (at_count / length) * 100 if length else 0
+        at_count / length * 100 if length else 0
     )
 
     return {
@@ -203,16 +207,15 @@ def align_sequences(reference, sample):
     )
 
     if not alignments:
-        raise ValueError("Unable to align the DNA sequences.")
+        raise ValueError(
+            "Unable to align the DNA sequences."
+        )
 
     alignment = alignments[0]
 
-    reference_aligned = alignment.seqA
-    sample_aligned = alignment.seqB
-
     return (
-        reference_aligned,
-        sample_aligned,
+        alignment.seqA,
+        alignment.seqB,
         alignment.score
     )
 
@@ -229,11 +232,10 @@ def detect_mutations(
 ):
 
     mutations = []
+    aligned_bases = []
 
     reference_position = 0
     sample_position = 0
-
-    aligned_bases = []
 
     substitution_count = 0
     insertion_count = 0
@@ -252,7 +254,6 @@ def detect_mutations(
 
         is_match = ref_base == sample_base
 
-        # Data for DNA sequence comparison visualization
         aligned_bases.append({
             "reference": ref_base,
             "sample": sample_base,
@@ -263,8 +264,10 @@ def detect_mutations(
             continue
 
         if ref_base == "-":
+
             mutation_type = "Insertion"
             insertion_count += 1
+
             position = max(1, reference_position)
 
             codon_info = {
@@ -276,8 +279,10 @@ def detect_mutations(
             }
 
         elif sample_base == "-":
+
             mutation_type = "Deletion"
             deletion_count += 1
+
             position = reference_position
 
             codon_info = {
@@ -289,8 +294,10 @@ def detect_mutations(
             }
 
         else:
+
             mutation_type = "Substitution"
             substitution_count += 1
+
             position = reference_position
 
             codon_info = analyse_codon(
@@ -301,7 +308,7 @@ def detect_mutations(
             )
 
         position_percent = round(
-            (position / len(reference)) * 100,
+            position / len(reference) * 100,
             2
         ) if reference else 0
 
@@ -375,10 +382,6 @@ def analyse_sequences(reference_text, sample_text):
 
     mutations = mutation_results["mutations"]
 
-    # -------------------------------------
-    # MUTATION EFFECT COUNTS
-    # -------------------------------------
-
     effect_counts = Counter(
         mutation["effect"]
         for mutation in mutations
@@ -389,13 +392,8 @@ def analyse_sequences(reference_text, sample_text):
         for mutation in mutations
     )
 
-    # -------------------------------------
-    # FINAL RESULT
-    # -------------------------------------
-
     result = {
 
-        # Sequence information
         "id": sample_record["id"],
         "description": sample_record["description"],
         "reference_id": reference_record["id"],
@@ -405,7 +403,6 @@ def analyse_sequences(reference_text, sample_text):
 
         "sequence": sample,
 
-        # GC content statistics
         "gc": sample_stats["gc"],
         "at": sample_stats["at"],
 
@@ -418,34 +415,37 @@ def analyse_sequences(reference_text, sample_text):
         "c_count": sample_stats["c_count"],
         "n_count": sample_stats["n_count"],
 
-        # Reference statistics
         "reference_gc": reference_stats["gc"],
         "reference_at": reference_stats["at"],
 
-        # DNA comparison visualization
         "reference_aligned": reference_aligned,
         "sample_aligned": sample_aligned,
 
         "aligned_bases": mutation_results["aligned_bases"],
         "aligned_length": len(reference_aligned),
 
-        # Alignment information
         "alignment": mutation_results["alignment"],
         "alignment_score": round(alignment_score, 2),
 
-        # Mutation information
         "mutation_count": len(mutations),
 
-        "substitution_count": mutation_results["substitution_count"],
-        "insertion_count": mutation_results["insertion_count"],
-        "deletion_count": mutation_results["deletion_count"],
+        "substitution_count": mutation_results[
+            "substitution_count"
+        ],
+
+        "insertion_count": mutation_results[
+            "insertion_count"
+        ],
+
+        "deletion_count": mutation_results[
+            "deletion_count"
+        ],
 
         "mutation_type_counts": dict(mutation_type_counts),
         "effect_counts": dict(effect_counts),
 
         "top_mutations": mutations[:25],
 
-        # Codon and amino acid information
         "codon_mutations": [
             mutation
             for mutation in mutations
@@ -512,4 +512,3 @@ if __name__ == "__main__":
         port=5000,
         debug=True
     )
-```
